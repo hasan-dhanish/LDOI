@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { AuthScreen } from './components/AuthScreen';
 import { DashboardView } from './components/DashboardView';
 import { DeadlinesView } from './components/DeadlinesView';
-import { EnquiriesView } from './components/EnquiriesView';
 import { JournalView } from './components/JournalView';
 import { ProjectDetailView } from './components/ProjectDetailView';
 import { ProjectsView } from './components/ProjectsView';
-import { QuotationsView } from './components/QuotationsView';
 import { Sidebar } from './components/Sidebar';
 import { LdoiProvider, useLdoi } from './context/LdoiContext';
 import type { ActiveTab } from './types';
@@ -90,17 +88,11 @@ const WorkspaceShell: React.FC = () => {
             <ProjectsView onOpenProject={handleOpenProject} />
           ))}
 
-        {activeTab === 'enquiries' && (
-          <EnquiriesView onOpenProject={handleOpenProject} />
-        )}
-
         {activeTab === 'deadlines' && (
           <DeadlinesView onOpenProject={handleOpenProject} />
         )}
 
         {activeTab === 'journal' && <JournalView />}
-
-        {activeTab === 'quotations' && <QuotationsView />}
         </div>
       </main>
     </div>
