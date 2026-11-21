@@ -45,7 +45,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-30 ios-desk-bg flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-30 matrix-clean-bg flex flex-col overflow-hidden">
       {/* Fixed Floating Top-Left Back + Title */}
       <div className="fixed top-4 left-4 z-40 flex items-center gap-2 paper-card rounded-full pl-1.5 pr-3.5 py-1.5 shadow-lg border border-[#E4E2DC] backdrop-blur-md">
         <button

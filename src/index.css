@@ -56,6 +56,17 @@
   color: #f4f4f5;
 }
 
+.matrix-clean-bg {
+  background-color: #f4f2ec;
+  background-image: none;
+}
+
+.dark-theme .matrix-clean-bg {
+  background-color: #0e0f12;
+  background-image: none;
+  color: #f4f4f5;
+}
+
 .dark-theme .paper-card {
   background-color: rgba(34, 37, 45, 0.94);
   border-color: rgba(255, 255, 255, 0.13);

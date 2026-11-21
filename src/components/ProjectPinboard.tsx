@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
   CheckSquare,
+  Crosshair,
   Download,
   FileSpreadsheet,
   FileText,
@@ -255,54 +256,9 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     window.addEventListener('pointerup', onUp);
   };
 
-  // Virtual world bounds for the custom floating edge scrollbars
-  const WORLD_MIN = -3000;
-  const WORLD_MAX = 5000;
-  const WORLD_SPAN = WORLD_MAX - WORLD_MIN;
-  const vpW = typeof window !== 'undefined' ? window.innerWidth : 1280;
-  const vpH = typeof window !== 'undefined' ? window.innerHeight : 720;
-  const viewWorldX = -pan.x / zoom;
-  const viewWorldY = -pan.y / zoom;
-  const viewWorldW = vpW / zoom;
-  const viewWorldH = vpH / zoom;
-  const hThumbPct = Math.min(85, Math.max(8, (viewWorldW / WORLD_SPAN) * 100));
-  const vThumbPct = Math.min(85, Math.max(8, (viewWorldH / WORLD_SPAN) * 100));
-  const hLeftPct = Math.min(
-    100 - hThumbPct,
-    Math.max(0, ((viewWorldX - WORLD_MIN) / WORLD_SPAN) * 100)
-  );
-  const vTopPct = Math.min(
-    100 - vThumbPct,
-    Math.max(0, ((viewWorldY - WORLD_MIN) / WORLD_SPAN) * 100)
-  );
-
-  const startThumbDrag = (axis: 'x' | 'y', e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const track = e.currentTarget.parentElement;
-    if (!track) return;
-    const trackRect = track.getBoundingClientRect();
-    const startPos = axis === 'x' ? e.clientX : e.clientY;
-    const origPanVal = axis === 'x' ? pan.x : pan.y;
-    const trackLen = axis === 'x' ? trackRect.width : trackRect.height;
-
-    const onMove = (ev: PointerEvent) => {
-      const deltaPx = (axis === 'x' ? ev.clientX : ev.clientY) - startPos;
-      const worldDelta = (deltaPx / trackLen) * WORLD_SPAN;
-      setPan((prev) =>
-        axis === 'x'
-          ? { ...prev, x: origPanVal - worldDelta * zoom }
-          : { ...prev, y: origPanVal - worldDelta * zoom }
-      );
-    };
-
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
+  const handleBackToCenter = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
   };
 
   const cpDone = checkpoints.filter((c) => c.done).length;
@@ -394,7 +350,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         </form>
       )}
 
-      {/* Fixed Floating Zoom Pill (Bottom-Right) */}
+      {/* Fixed Floating Zoom + Back to Center Pill (Bottom-Right) */}
       <div className="fixed bottom-16 right-4 sm:bottom-5 sm:right-5 z-40 paper-card rounded-full px-2.5 py-1.5 shadow-2xl border border-[#E4E2DC] flex items-center gap-1.5 backdrop-blur-md">
         <button
           type="button"
@@ -413,17 +369,9 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           title="Zoom Level (5% - 250%)"
           className="w-16 sm:w-20 accent-[#0A5386] cursor-pointer h-1"
         />
-        <button
-          type="button"
-          onClick={() => {
-            setZoom(1);
-            setPan({ x: 0, y: 0 });
-          }}
-          title="Reset to 100%"
-          className="px-1.5 py-0.5 text-[11px] font-mono-num font-semibold text-[#18181B] hover:bg-black/5 rounded-full min-w-[42px] text-center"
-        >
+        <span className="px-1 text-[11px] font-mono-num font-semibold text-[#18181B] min-w-[38px] text-center">
           {Math.round(zoom * 100)}%
-        </button>
+        </span>
         <button
           type="button"
           onClick={() => zoomCentered(zoom * 1.35)}
@@ -443,25 +391,19 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         >
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
+        <div className="w-px h-4 bg-[#E4E2DC] mx-0.5" />
+        <button
+          type="button"
+          onClick={handleBackToCenter}
+          title="Back to Center"
+          className="ios-press inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-[#0A5386] text-white rounded-full"
+        >
+          <Crosshair className="w-3 h-3" />
+          Back to Center
+        </button>
       </div>
 
-      {/* Cool Floating Edge Scrollbars */}
-      <div className="fixed bottom-1.5 left-6 right-10 z-30 h-2 rounded-full bg-black/5 backdrop-blur-sm pointer-events-auto">
-        <div
-          onPointerDown={(e) => startThumbDrag('x', e)}
-          style={{ left: `${hLeftPct}%`, width: `${hThumbPct}%` }}
-          className="absolute top-0 bottom-0 rounded-full bg-gradient-to-r from-[#0A5386] to-[#133F47] opacity-75 hover:opacity-100 cursor-grab active:cursor-grabbing shadow-[0_0_10px_rgba(10,83,134,0.45)] transition-opacity"
-        />
-      </div>
-      <div className="fixed top-16 bottom-16 right-1.5 z-30 w-2 rounded-full bg-black/5 backdrop-blur-sm pointer-events-auto">
-        <div
-          onPointerDown={(e) => startThumbDrag('y', e)}
-          style={{ top: `${vTopPct}%`, height: `${vThumbPct}%` }}
-          className="absolute left-0 right-0 rounded-full bg-gradient-to-b from-[#0A5386] to-[#133F47] opacity-75 hover:opacity-100 cursor-grab active:cursor-grabbing shadow-[0_0_10px_rgba(10,83,134,0.45)] transition-opacity"
-        />
-      </div>
-
-      {/* True Infinite Pan & Zoom Matrix Canvas */}
+      {/* True Infinite Pan & Zoom Matrix Canvas (Clean Background, No Scrollbars) */}
       <div
         ref={viewportRef}
         onWheel={handleCanvasWheel}
@@ -469,14 +411,6 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         className={`flex-1 overflow-hidden relative select-none ${
           isPanning ? 'cursor-grabbing' : 'cursor-grab'
         }`}
-        style={{
-          backgroundImage: `radial-gradient(rgba(140, 128, 110, ${Math.min(
-            0.35,
-            Math.max(0.1, 0.28 * zoom)
-          )}) ${Math.max(0.75, 1.2 * Math.min(1, zoom))}px, transparent 1px)`,
-          backgroundSize: `${Math.max(6, 22 * zoom)}px ${Math.max(6, 22 * zoom)}px`,
-          backgroundPosition: `${pan.x}px ${pan.y}px`,
-        }}
       >
         <div
           style={{
