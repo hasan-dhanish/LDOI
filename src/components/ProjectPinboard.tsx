@@ -15,6 +15,7 @@ import {
   Square,
   StickyNote,
   Trash2,
+  Undo2,
   Upload,
   X,
 } from 'lucide-react';
@@ -257,6 +258,10 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const panRef = useRef({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
+  const [pendingDeletes, setPendingDeletes] = useState<
+    { id: string; kind: 'doc' | 'note'; label: string; timer: number }[]
+  >([]);
+  const pendingDeletesRef = useRef(pendingDeletes);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
     cardId: string;
@@ -267,6 +272,10 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   } | null>(null);
 
   useEffect(() => {
+    pendingDeletesRef.current = pendingDeletes;
+  }, [pendingDeletes]);
+
+  useEffect(() => {
     zoomRef.current = zoom;
   }, [zoom]);
 
@@ -274,23 +283,67 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     panRef.current = pan;
   }, [pan]);
 
-  const projectDocs = documents.filter((d) => d.projectId === project.id);
+  const queueDelete = (kind: 'doc' | 'note', id: string, label: string) => {
+    const timer = window.setTimeout(() => {
+      if (kind === 'doc') {
+        deleteDocument(id);
+      } else {
+        deleteProjectNote(id);
+      }
+      setPendingDeletes((prev) => prev.filter((item) => item.id !== id));
+    }, 7000);
+
+    setPendingDeletes((prev) => [...prev, { id, kind, label, timer }]);
+  };
+
+  const handleUndoDelete = (targetId?: string) => {
+    setPendingDeletes((prev) => {
+      if (prev.length === 0) return prev;
+      const item = targetId ? prev.find((p) => p.id === targetId) : prev[prev.length - 1];
+      if (!item) return prev;
+      window.clearTimeout(item.timer);
+      return prev.filter((p) => p.id !== item.id);
+    });
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z') return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (pendingDeletesRef.current.length > 0) {
+        e.preventDefault();
+        handleUndoDelete();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      pendingDeletesRef.current.forEach((item) => {
+        window.clearTimeout(item.timer);
+        if (item.kind === 'doc') {
+          deleteDocument(item.id);
+        } else {
+          deleteProjectNote(item.id);
+        }
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const hiddenIds = new Set(pendingDeletes.map((p) => p.id));
+  const projectDocs = documents.filter(
+    (d) => d.projectId === project.id && !hiddenIds.has(d.id)
+  );
   const pinnedPages = projectNotes.filter(
-    (n) => n.projectId === project.id && n.content.startsWith('[PIN_PAGE]')
+    (n) => n.projectId === project.id && n.content.startsWith('[PIN_PAGE]') && !hiddenIds.has(n.id)
   );
   const pinnedChecklists = projectNotes.filter(
-    (n) => n.projectId === project.id && n.content.startsWith('[PIN_CHECKLIST]')
+    (n) =>
+      n.projectId === project.id &&
+      n.content.startsWith('[PIN_CHECKLIST]') &&
+      !hiddenIds.has(n.id)
   );
-
-  const getViewportCenterWorld = () => {
-    const rect = viewportRef.current?.getBoundingClientRect();
-    const vw = rect ? rect.width : window.innerWidth;
-    const vh = rect ? rect.height : window.innerHeight;
-    return {
-      x: Math.round((-panRef.current.x + vw / 2 - 130) / zoomRef.current),
-      y: Math.round((-panRef.current.y + vh / 2 - 80) / zoomRef.current),
-    };
-  };
 
   const getPos = (cardId: string, fallbackIndex = 0): { x: number; y: number } => {
     if (positions[cardId]) return positions[cardId];
@@ -575,6 +628,23 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         </button>
       </div>
 
+      {/* Floating Undo Toast */}
+      {pendingDeletes.length > 0 && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 paper-card rounded-full pl-3.5 pr-1.5 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-2.5 backdrop-blur-md">
+          <span className="text-xs font-medium text-[#18181B] max-w-[200px] truncate">
+            Removed {pendingDeletes[pendingDeletes.length - 1].label}
+          </span>
+          <button
+            type="button"
+            onClick={() => handleUndoDelete(pendingDeletes[pendingDeletes.length - 1].id)}
+            className="ios-press inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-[#0A5386] text-white rounded-full"
+          >
+            <Undo2 className="w-3 h-3" />
+            Undo
+          </button>
+        </div>
+      )}
+
       {/* Empty Canvas Subtle Hint */}
       {totalPins === 0 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -632,7 +702,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                   <button
                     type="button"
                     onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() => deleteDocument(doc.id)}
+                    onClick={() => queueDelete('doc', doc.id, doc.name)}
                     title="Delete pin"
                     className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2.5 -right-2.5 z-10 w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-md"
                   >
@@ -673,7 +743,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                   <button
                     type="button"
                     onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() => deleteDocument(doc.id)}
+                    onClick={() => queueDelete('doc', doc.id, doc.name)}
                     title="Delete pin"
                     className="w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-sm"
                   >
@@ -702,14 +772,16 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           {pinnedPages.map((note, idx) => {
             const cardId = `page_${note.id}`;
             const fallbackPos = getPos(cardId, projectDocs.length + idx);
+            const titlePreview =
+              note.content.slice('[PIN_PAGE]'.length).split('\n')[0].trim() || 'Page';
             return (
               <FloatingPagePin
                 key={note.id}
                 note={note}
-                pos={positions[cardId] ?? fallbackPos ?? getViewportCenterWorld()}
+                pos={positions[cardId] ?? fallbackPos}
                 onDragStart={(e) => startDrag(cardId, e, projectDocs.length + idx)}
                 onUpdate={(content) => updateProjectNote(note.id, content)}
-                onDelete={() => deleteProjectNote(note.id)}
+                onDelete={() => queueDelete('note', note.id, titlePreview)}
               />
             );
           })}
@@ -718,16 +790,18 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           {pinnedChecklists.map((note, idx) => {
             const cardId = `chk_${note.id}`;
             const fallbackPos = getPos(cardId, projectDocs.length + pinnedPages.length + idx);
+            const titlePreview =
+              note.content.slice('[PIN_CHECKLIST]'.length).split('\n')[0].trim() || 'Checklist';
             return (
               <FloatingChecklistPin
                 key={note.id}
                 note={note}
-                pos={positions[cardId] ?? fallbackPos ?? getViewportCenterWorld()}
+                pos={positions[cardId] ?? fallbackPos}
                 onDragStart={(e) =>
                   startDrag(cardId, e, projectDocs.length + pinnedPages.length + idx)
                 }
                 onUpdate={(content) => updateProjectNote(note.id, content)}
-                onDelete={() => deleteProjectNote(note.id)}
+                onDelete={() => queueDelete('note', note.id, titlePreview)}
               />
             );
           })}
