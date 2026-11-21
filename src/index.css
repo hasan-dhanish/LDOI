@@ -17,13 +17,15 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Minimal Soft Graph-Paper Grid for Workspace */
+/* Engineering Workbench Background for Home Workspace */
 .ios-desk-bg {
   background-color: #f4f2ec;
   background-image:
-    linear-gradient(to right, rgba(140, 128, 110, 0.08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(140, 128, 110, 0.08) 1px, transparent 1px);
-  background-size: 24px 24px;
+    linear-gradient(rgba(244, 242, 236, 0.68), rgba(244, 242, 236, 0.74)),
+    url('/bg-workbench.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   background-attachment: fixed;
 }
 
@@ -51,8 +53,12 @@
 .dark-theme.ios-desk-bg {
   background-color: #0e0f12;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    linear-gradient(rgba(10, 11, 14, 0.48), rgba(10, 11, 14, 0.56)),
+    url('/bg-workbench-night.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   color: #f4f4f5;
 }
 
