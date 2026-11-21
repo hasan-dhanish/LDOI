@@ -95,7 +95,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       />
 
       <div
-        className={`relative z-10 w-full max-w-md rounded-[26px] p-7 sm:p-8 backdrop-blur-2xl backdrop-saturate-150 transition-all duration-500 ease-out ${darkMode
+        className={`relative z-10 w-full max-w-[372px] min-h-[476px] flex flex-col justify-between rounded-[26px] p-7 backdrop-blur-2xl backdrop-saturate-150 transition-all duration-500 ease-out ${darkMode
           ? 'login-glass-card text-zinc-100'
           : 'login-glass-card-day text-[#23211E]'
           } ${unlocking ? 'opacity-0 scale-95 translate-y-2' : 'opacity-100 scale-100 translate-y-0'}`}
