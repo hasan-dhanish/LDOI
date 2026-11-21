@@ -162,20 +162,22 @@ export const JournalView: React.FC = () => {
         </div>
       </div>
 
-      {/* Physical Two-Page Open Notebook Spread (Inspired by Image 1) */}
-      <div className="relative paper-card rounded-2xl overflow-hidden border-2 border-[#D8D5CC] grid lg:grid-cols-12 min-h-[540px]">
-        {/* Subtle Center Ring Binder Spine (visible on desktop) */}
-        <div className="hidden lg:flex flex-col justify-evenly items-center absolute left-1/3 -translate-x-1/2 inset-y-6 z-10 pointer-events-none">
-          {[0, 1, 2].map((ring) => (
-            <div
-              key={ring}
-              className="w-5 h-3 rounded-xs bg-[#27272A] border border-black/30 shadow-xs"
-            />
-          ))}
-        </div>
+      {/* Realistic Physical Hardcover Ring-Bound Open Notebook */}
+      <div className="p-2.5 sm:p-3 rounded-[22px] bg-[#2C2925] shadow-[0_18px_44px_rgba(0,0,0,0.28)] border border-black/30">
+        <div className="relative rounded-xl overflow-hidden grid lg:grid-cols-12 min-h-[560px] bg-[#FCFBF8] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]">
+          {/* Realistic Metallic Twin-Loop Binder Rings + Punch Holes (Desktop) */}
+          <div className="hidden lg:flex flex-col justify-evenly items-center absolute left-1/3 -translate-x-1/2 inset-y-4 z-20 pointer-events-none">
+            {[0, 1, 2, 3, 4].map((ring) => (
+              <div key={ring} className="flex items-center">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#D8D3C8] border border-black/25 shadow-inner" />
+                <span className="w-6 h-2.5 -mx-1 rounded-sm bg-gradient-to-b from-[#E5E7EB] via-[#9CA3AF] to-[#4B5563] border border-black/30 shadow-sm" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#D8D3C8] border border-black/25 shadow-inner" />
+              </div>
+            ))}
+          </div>
 
-        {/* Left Page: Index of Ideas & Learnings */}
-        <div className="lg:col-span-4 bg-[#FAF9F6] border-b lg:border-b-0 lg:border-r border-[#E4E2DC] p-5 flex flex-col">
+          {/* Left Page: Index of Ideas & Learnings with Spine Shadow */}
+          <div className="lg:col-span-4 bg-[#F7F4EC] border-b lg:border-b-0 lg:border-r border-[#D6D0C2] p-5 lg:pr-7 flex flex-col shadow-[inset_-16px_0_24px_-16px_rgba(0,0,0,0.16)]">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-[#52525B]">
               Notebook Index
@@ -240,8 +242,8 @@ export const JournalView: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Page: Ruled Paper Live Editor */}
-        <div className="lg:col-span-8 bg-[#FCFBF8] p-6 lg:pl-8 flex flex-col">
+        {/* Right Page: Ruled Paper Live Editor with Spine Gutter Shadow */}
+        <div className="lg:col-span-8 bg-[#FCFBF8] p-6 lg:pl-10 flex flex-col shadow-[inset_16px_0_24px_-16px_rgba(0,0,0,0.16)]">
           {!activeEntry ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center text-[#71717A]">
               <BookOpen className="w-7 h-7 mb-2" />
@@ -336,6 +338,7 @@ export const JournalView: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

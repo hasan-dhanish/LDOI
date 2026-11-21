@@ -7,7 +7,6 @@ import { JournalView } from './components/JournalView';
 import { ProjectDetailView } from './components/ProjectDetailView';
 import { ProjectsView } from './components/ProjectsView';
 import { QuotationsView } from './components/QuotationsView';
-import { SetupModal } from './components/SetupModal';
 import { Sidebar } from './components/Sidebar';
 import { LdoiProvider, useLdoi } from './context/LdoiContext';
 import type { ActiveTab } from './types';
@@ -16,7 +15,6 @@ const WorkspaceShell: React.FC = () => {
   const { currentUser, authLoading } = useLdoi();
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [showSetupModal, setShowSetupModal] = useState(false);
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('ldoi_theme');
@@ -69,7 +67,6 @@ const WorkspaceShell: React.FC = () => {
       <Sidebar
         activeTab={activeTab}
         onSelectTab={handleSelectTab}
-        onOpenSetupInfo={() => setShowSetupModal(true)}
         darkMode={darkMode}
         onToggleDarkMode={toggleDarkMode}
       />
@@ -106,8 +103,6 @@ const WorkspaceShell: React.FC = () => {
         {activeTab === 'quotations' && <QuotationsView />}
         </div>
       </main>
-
-      {showSetupModal && <SetupModal onClose={() => setShowSetupModal(false)} />}
     </div>
   );
 };

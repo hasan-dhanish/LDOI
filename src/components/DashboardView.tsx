@@ -129,24 +129,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     .sort((a, b) => (a.urgency.daysLeft ?? 999) - (b.urgency.daysLeft ?? 999))
     .slice(0, 6);
 
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const weekday = now.toLocaleDateString('en-IN', { weekday: 'long' });
   const dateLabel = now.toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
   });
+  const timeLabel = now.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
 
   return (
     <div className="space-y-6">
-      {/* iOS Header Bar */}
+      {/* Big Date & Time + Desk Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white border border-[#E2E0D8] text-[11px] font-semibold text-[#3A3A3C]">
-            <span className="w-2 h-2 rounded-xs bg-[#8B1E1E]" />
-            <span>{weekday}, {dateLabel}</span>
+          <div className="flex flex-wrap items-baseline gap-3">
+            <span className="text-3xl sm:text-4xl font-bold font-mono-num tracking-tight text-[#1C1C1E]">
+              {timeLabel}
+            </span>
+            <span className="text-sm font-semibold text-[#8E8E93]">
+              {weekday}, {dateLabel}
+            </span>
           </div>
-          <h1 className="mt-2 text-2xl font-bold text-[#1C1C1E] tracking-tight">
+          <h1 className="mt-1 text-base font-semibold text-[#3A3A3C]">
             {myName}&apos;s Desk
           </h1>
         </div>

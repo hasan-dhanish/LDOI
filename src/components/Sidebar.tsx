@@ -9,7 +9,6 @@ import {
   LogOut,
   Moon,
   Sun,
-  Wifi,
 } from 'lucide-react';
 import { TEAM_MEMBERS, getMemberColor, getMemberInitials } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
@@ -19,7 +18,6 @@ import { LdoiLogo } from './LdoiLogo';
 interface SidebarProps {
   activeTab: ActiveTab;
   onSelectTab: (tab: ActiveTab) => void;
-  onOpenSetupInfo: () => void;
   darkMode: boolean;
   onToggleDarkMode: () => void;
 }
@@ -41,11 +39,10 @@ const NAV_ITEMS: {
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onSelectTab,
-  onOpenSetupInfo,
   darkMode,
   onToggleDarkMode,
 }) => {
-  const { currentUser, onlineMembers, syncMode, signOut } = useLdoi();
+  const { currentUser, onlineMembers, signOut } = useLdoi();
 
   return (
     <aside className="no-print w-full md:w-68 md:h-screen md:sticky md:top-0 shrink-0 bg-white/55 backdrop-blur-2xl border-b md:border-b-0 md:border-r border-white/60 shadow-[inset_-1px_0_0_rgba(255,255,255,0.4)] flex flex-col justify-between overflow-hidden">
@@ -94,7 +91,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className={`ios-press flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all ${
                   active
                     ? 'shadow-2xs text-[#1C1C1E]'
-                    : 'border-transparent text-[#3A3A3C] hover:bg-[#F2F1EC]'
+                    : darkMode
+                    ? 'border-transparent text-zinc-300 hover:bg-white/10 hover:text-white'
+                    : 'border-transparent text-[#3A3A3C] hover:bg-[#E4E0D5] hover:text-[#18181B]'
                 }`}
               >
                 <span
@@ -144,26 +143,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Footer Sync & Profile Card */}
-      <div className="p-3 border-t border-[#E2E0D8] space-y-2">
-        <button
-          type="button"
-          onClick={onOpenSetupInfo}
-          className="ios-press w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-[#F7F6F2] border border-[#E2E0D8] hover:border-[#007AFF] text-left"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <Wifi
-              className={`w-3.5 h-3.5 shrink-0 ${
-                syncMode === 'supabase' ? 'text-[#34C759]' : 'text-[#FF9500]'
-              }`}
-            />
-            <span className="text-[11px] font-semibold text-[#1C1C1E] truncate">
-              {syncMode === 'supabase' ? 'Live Cloud Sync' : 'Local Multi-Tab'}
-            </span>
-          </div>
-          <span className="text-[11px] text-[#007AFF] font-semibold shrink-0">Setup</span>
-        </button>
-
+      {/* Footer Profile Card */}
+      <div className="p-3 border-t border-[#E2E0D8]">
         <div className="flex items-center justify-between px-2 py-1.5">
           <div className="flex items-center gap-2 min-w-0">
             <span
