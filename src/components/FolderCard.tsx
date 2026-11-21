@@ -34,25 +34,24 @@ export const FolderCard: React.FC<FolderCardProps> = ({
     <button
       type="button"
       onClick={onClick}
-      className="ios-press group text-left w-full focus:outline-none"
+      className="ios-press group text-left w-full max-w-[220px] focus:outline-none"
     >
-      <div className="relative aspect-[1/0.96] w-full rounded-[26px] border-[3px] border-[#18181B] dark:border-white/15 overflow-hidden shadow-[0_12px_28px_rgba(0,0,0,0.22)] transition-transform duration-150 group-hover:-translate-y-1 bg-[#1F2024]">
+      <div className="relative aspect-[1/0.94] w-full rounded-[20px] border-2 border-[#18181B] dark:border-white/15 overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.2)] transition-transform duration-150 group-hover:-translate-y-1 bg-[#1F2024]">
         {/* Top Colored Backplate */}
         <div
-          className="absolute inset-x-0 top-0 h-[44%] p-4 flex items-start justify-between"
+          className="absolute inset-x-0 top-0 h-[44%] p-3 flex items-start justify-between"
           style={{ background: TOP_STRIP_STYLES[project.status] }}
         >
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/25 text-white/95 border border-white/15">
+          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/25 text-white/95 border border-white/15">
             {project.status}
           </span>
-          <span className="text-[11px] font-mono-num font-semibold text-white/95">
+          <span className="text-[10px] font-mono-num font-semibold text-white/95">
             {formatInr(project.quotedAmountInr)}
           </span>
         </div>
 
         {/* Matte Dark Front Folder Flap with Angled Tab Shoulder */}
-        <div className="absolute inset-x-0 bottom-0 top-[24%] flex flex-col justify-between p-4 pt-5 text-white">
-          {/* SVG Background Shape for Crisp Angled Folder Shoulder */}
+        <div className="absolute inset-x-0 bottom-0 top-[24%] flex flex-col justify-between p-3 pt-4 text-white">
           <svg
             viewBox="0 0 300 220"
             preserveAspectRatio="none"
@@ -72,43 +71,43 @@ export const FolderCard: React.FC<FolderCardProps> = ({
           </svg>
 
           {/* Folder Title & Client Subtitle */}
-          <div className="relative z-10 pr-2 mt-1">
-            <h3 className="text-sm font-bold text-white truncate leading-snug">
+          <div className="relative z-10 pr-1 mt-0.5">
+            <h3 className="text-xs font-bold text-white truncate leading-snug">
               {project.title}
             </h3>
-            <p className="text-[11px] text-zinc-400 truncate mt-0.5">
+            <p className="text-[10px] text-zinc-400 truncate mt-0.5">
               {project.clientName} · {project.category}
             </p>
           </div>
 
           {/* Assigned Member Badges */}
-          <div className="relative z-10 flex items-center gap-1.5 my-auto pt-2">
+          <div className="relative z-10 flex items-center gap-1 my-auto pt-1">
             {(assignees.length > 0 ? assignees : [project.createdBy]).slice(0, 4).map((m) => (
               <span
                 key={m}
                 title={m}
                 style={{ backgroundColor: getMemberColor(m) }}
-                className="inline-flex items-center justify-center w-6 h-6 rounded-md border border-white/25 text-[9px] font-bold text-white"
+                className="inline-flex items-center justify-center w-5 h-5 rounded border border-white/25 text-[8px] font-bold text-white"
               >
                 {getMemberInitials(m)}
               </span>
             ))}
           </div>
 
-          {/* Bottom Stats Row (Big Count Left, Metadata Right) */}
-          <div className="relative z-10 flex items-end justify-between pt-1">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold font-mono-num leading-none text-white">
+          {/* Bottom Stats Row */}
+          <div className="relative z-10 flex items-end justify-between">
+            <div className="flex items-baseline gap-1">
+              <span className="text-lg font-bold font-mono-num leading-none text-white">
                 {stepDisplay}
               </span>
-              <span className="text-[11px] font-medium text-zinc-400">
-                Steps ({completedCount} done)
+              <span className="text-[9px] font-medium text-zinc-400">
+                Steps ({completedCount}/{taskCount})
               </span>
             </div>
 
             <div className="text-right">
               <div
-                className={`text-[11px] font-mono-num font-semibold ${
+                className={`text-[10px] font-mono-num font-semibold ${
                   urgency.tone === 'overdue'
                     ? 'text-[#FCA5A5]'
                     : urgency.tone === 'today' || urgency.tone === 'soon'
@@ -118,7 +117,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
               >
                 {urgency.label}
               </div>
-              <div className="text-[10px] font-mono-num text-zinc-500">
+              <div className="text-[9px] font-mono-num text-zinc-500">
                 {docCount} {docCount === 1 ? 'doc' : 'docs'}
               </div>
             </div>
