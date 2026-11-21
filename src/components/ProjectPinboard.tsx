@@ -15,6 +15,7 @@ import {
   StickyNote,
   Trash2,
   Upload,
+  X,
 } from 'lucide-react';
 import { MEMBER_NAMES, PROJECT_CATEGORIES } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
@@ -55,6 +56,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     addWorkflowStep,
     toggleWorkflowStep,
     addProjectNote,
+    deleteProjectNote,
     uploadDocument,
     deleteDocument,
   } = useLdoi();
@@ -775,81 +777,91 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
             </div>
           </div>
 
-          {/* 5. Pinned Design Inspo Images & Uploaded Documents (PDF / Excel / Word) */}
+          {/* 5. Pinned Design Inspo Images & Uploaded Documents (Borderless Floating Pins) */}
           {projectDocs.map((doc, idx) => {
             const cardId = `doc_${doc.id}`;
             const pos = getPos(cardId, idx);
             const isImage = doc.mimeType.startsWith('image/');
             const badge = getFileBadge(doc.name);
+
+            if (isImage) {
+              return (
+                <div
+                  key={doc.id}
+                  style={{ left: pos.x, top: pos.y }}
+                  onPointerDown={(e) => startDrag(cardId, e, idx)}
+                  className="group absolute w-[240px] cursor-grab active:cursor-grabbing select-none"
+                >
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => deleteDocument(doc.id)}
+                    title="Delete pin"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2.5 -right-2.5 z-10 w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-md"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                  <img
+                    src={doc.url}
+                    alt={doc.name}
+                    draggable={false}
+                    className="w-full max-h-[260px] object-cover rounded-xl shadow-[0_14px_34px_rgba(24,24,27,0.16)]"
+                  />
+                  <div className="mt-1.5 px-1 text-[11px] font-medium text-[#52525B] truncate text-center">
+                    {doc.name}
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div
                 key={doc.id}
                 style={{ left: pos.x, top: pos.y }}
-                className="absolute w-[280px] paper-card rounded-2xl border-t-[3px] border-t-[#254454] shadow-[0_14px_34px_rgba(24,24,27,0.08),0_2px_6px_rgba(24,24,27,0.04)] overflow-hidden"
+                onPointerDown={(e) => startDrag(cardId, e, idx)}
+                className="group absolute w-[150px] flex flex-col items-center cursor-grab active:cursor-grabbing select-none"
               >
-                <div
-                  onPointerDown={(e) => startDrag(cardId, e, idx)}
-                  className="px-3.5 py-2.5 border-b border-[#E4E2DC]/80 flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing select-none"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-[#254454] shrink-0" />
-                    <span className="text-[11px] font-semibold text-[#18181B] truncate">
-                      {isImage ? 'Design Inspo' : badge} · {doc.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => deleteDocument(doc.id)}
-                      className="text-[#A1A1AA] hover:text-[#DC2626]"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                    <GripHorizontal className="w-3.5 h-3.5 text-[#A1A1AA]" />
-                  </div>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2 right-1 z-10 flex items-center gap-1">
+                  <a
+                    href={doc.url}
+                    download={doc.name}
+                    target="_blank"
+                    rel="noreferrer"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    title="Download file"
+                    className="w-6 h-6 rounded-full bg-white/95 border border-[#E4E2DC] text-[#18181B] hover:border-[#0A5386] flex items-center justify-center shadow-sm"
+                  >
+                    <Download className="w-3 h-3" />
+                  </a>
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => deleteDocument(doc.id)}
+                    title="Delete pin"
+                    className="w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-sm"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
 
-                {isImage ? (
-                  <div className="p-2 bg-[#FAF9F6]">
-                    <img
-                      src={doc.url}
-                      alt={doc.name}
-                      className="w-full h-40 object-cover rounded-lg border border-[#E4E2DC]"
-                    />
-                  </div>
-                ) : (
-                  <div className="p-3.5 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {badge === 'SHEET' ? (
-                        <FileSpreadsheet className="w-6 h-6 text-[#133F47] shrink-0" />
-                      ) : (
-                        <FileText className="w-6 h-6 text-[#0A5386] shrink-0" />
-                      )}
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-[#18181B] truncate">
-                          {doc.name}
-                        </div>
-                        <div className="text-[10px] text-[#71717A]">
-                          {doc.docType} · {doc.uploadedBy}
-                        </div>
-                      </div>
-                    </div>
-                    <a
-                      href={doc.url}
-                      download={doc.name}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-md text-[#18181B] hover:border-[#0A5386]"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                )}
+                <div className="relative p-3">
+                  {badge === 'SHEET' ? (
+                    <FileSpreadsheet className="w-12 h-12 text-[#133F47] drop-shadow-sm" />
+                  ) : (
+                    <FileText className="w-12 h-12 text-[#0A5386] drop-shadow-sm" />
+                  )}
+                  <span className="absolute bottom-2 right-1.5 px-1.5 py-0.5 text-[9px] font-bold tracking-wider bg-[#18181B] text-white rounded">
+                    {badge}
+                  </span>
+                </div>
+                <div className="w-full px-1 text-[11px] font-medium text-[#18181B] truncate text-center">
+                  {doc.name}
+                </div>
               </div>
             );
           })}
 
-          {/* 6. Custom Pinned Pages / Spec Notes */}
+          {/* 6. Custom Pinned Pages (Borderless Floating Pages) */}
           {pinnedPages.map((note, idx) => {
             const cardId = `page_${note.id}`;
             const pos = getPos(cardId, projectDocs.length + idx);
@@ -859,21 +871,22 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               <div
                 key={note.id}
                 style={{ left: pos.x, top: pos.y }}
-                className="absolute w-[300px] paper-card rounded-2xl border-t-[3px] border-t-[#8B1E1E] shadow-[0_14px_34px_rgba(24,24,27,0.08),0_2px_6px_rgba(24,24,27,0.04)] overflow-hidden"
+                onPointerDown={(e) => startDrag(cardId, e, projectDocs.length + idx)}
+                className="group absolute w-[260px] cursor-grab active:cursor-grabbing select-none p-2"
               >
-                <div
-                  onPointerDown={(e) => startDrag(cardId, e, projectDocs.length + idx)}
-                  className="px-4 py-3 border-b border-[#E4E2DC]/80 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => deleteProjectNote(note.id)}
+                  title="Delete page"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-md"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#8B1E1E] ring-2 ring-[#8B1E1E]/20 shrink-0" />
-                    <span className="text-xs font-bold text-[#18181B] truncate">
-                      {heading || 'Pinned Page'}
-                    </span>
-                  </div>
-                  <GripHorizontal className="w-4 h-4 text-[#A1A1AA] shrink-0" />
+                  <X className="w-3.5 h-3.5" />
+                </button>
+                <div className="text-sm font-bold text-[#18181B] leading-snug">
+                  {heading || 'Pinned Page'}
                 </div>
-                <div className="p-3.5 text-xs text-[#18181B] whitespace-pre-wrap leading-relaxed max-h-52 overflow-y-auto">
+                <div className="mt-1.5 text-xs text-[#3F3F46] whitespace-pre-wrap leading-relaxed select-text">
                   {rest.join('\n') || 'Empty page'}
                 </div>
               </div>
