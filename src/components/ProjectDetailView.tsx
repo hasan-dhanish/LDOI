@@ -1,6 +1,5 @@
 import React from 'react';
 import { ArrowLeft, CheckCircle2, Trash2 } from 'lucide-react';
-import { formatDateShort, formatInr, getDeadlineUrgency } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
 import { ProjectPinboard } from './ProjectPinboard';
 
@@ -34,8 +33,6 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     );
   }
 
-  const urgency = getDeadlineUrgency(project.deadline);
-
   const handleEndProject = async () => {
     await updateProject(project.id, { status: 'Completed' });
   };
@@ -49,76 +46,45 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
   return (
     <div className="fixed inset-0 z-30 ios-desk-bg flex flex-col overflow-hidden">
-      {/* Compact Top Header */}
-      <div className="px-4 sm:px-6 py-3 border-b border-[#E4E2DC] shrink-0">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
-          <div className="flex items-start gap-3">
-            <button
-              type="button"
-              onClick={onBack}
-              className="mt-0.5 p-1.5 rounded-md bg-white border border-[#E4E2DC] hover:border-[#18181B] text-[#18181B]"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-semibold text-[#18181B]">{project.title}</h1>
-                <span className="px-2 py-0.5 text-[11px] font-medium bg-white border border-[#E4E2DC] rounded">
-                  {project.category}
-                </span>
-                <span
-                  className={`px-2 py-0.5 text-[11px] font-semibold rounded ${
-                    project.status === 'Active'
-                      ? 'bg-[#0071E3] text-white'
-                      : project.status === 'Completed'
-                      ? 'bg-[#0F766E] text-white'
-                      : 'bg-[#18181B] text-white'
-                  }`}
-                >
-                  {project.status}
-                </span>
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-[#52525B]">
-                <span>Client: {project.clientName}</span>
-                <span>|</span>
-                <span className="font-mono-num">Quote: {formatInr(project.quotedAmountInr)}</span>
-                <span>|</span>
-                <span
-                  className={`font-mono-num ${
-                    urgency.tone === 'overdue' ? 'text-[#DC2626] font-semibold' : ''
-                  }`}
-                >
-                  Deadline: {project.deadline ? formatDateShort(project.deadline) : 'Not set'} ({urgency.label})
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {project.status !== 'Completed' && (
-              <button
-                type="button"
-                onClick={handleEndProject}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#0F766E] hover:bg-[#115E59] text-white rounded-md"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                End Project
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleDeleteProject}
-              title="Delete Project"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white border border-[#E4E2DC] hover:border-[#DC2626] text-xs font-medium text-[#71717A] hover:text-[#DC2626]"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete
-            </button>
-          </div>
-        </div>
+      {/* Fixed Floating Top-Left Back + Title */}
+      <div className="fixed top-4 left-4 z-40 flex items-center gap-2 paper-card rounded-full pl-1.5 pr-3.5 py-1.5 shadow-lg border border-[#E4E2DC] backdrop-blur-md">
+        <button
+          type="button"
+          onClick={onBack}
+          title="Back to Projects"
+          className="ios-press p-1.5 rounded-full bg-white/80 border border-[#E4E2DC] hover:border-[#18181B] text-[#18181B]"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+        </button>
+        <span className="text-xs font-semibold text-[#18181B] max-w-[200px] truncate">
+          {project.title}
+        </span>
       </div>
 
-      {/* Interactive Pinboard Matrix (Full-Screen Canvas) */}
+      {/* Fixed Floating Top-Right Actions */}
+      <div className="fixed top-4 right-4 z-40 flex items-center gap-2">
+        {project.status !== 'Completed' && (
+          <button
+            type="button"
+            onClick={handleEndProject}
+            className="ios-press inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-[#0F766E] hover:bg-[#115E59] text-white rounded-full shadow-lg"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            End Project
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleDeleteProject}
+          title="Delete Project"
+          className="ios-press inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full paper-card border border-[#E4E2DC] hover:border-[#DC2626] text-xs font-semibold text-[#71717A] hover:text-[#DC2626] shadow-lg"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          Delete
+        </button>
+      </div>
+
+      {/* Full-Screen Pinboard Matrix Canvas */}
       <ProjectPinboard project={project} />
     </div>
   );

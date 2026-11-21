@@ -29,10 +29,10 @@ interface ProjectPinboardProps {
 }
 
 const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
-  checkpoints: { x: 24, y: 24 },
-  spec: { x: 380, y: 24 },
-  workflow: { x: 736, y: 24 },
-  controls: { x: 24, y: 360 },
+  checkpoints: { x: 24, y: 72 },
+  spec: { x: 380, y: 72 },
+  workflow: { x: 736, y: 72 },
+  controls: { x: 24, y: 408 },
 };
 
 function getFileBadge(name: string): string {
