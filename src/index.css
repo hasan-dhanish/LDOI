@@ -92,10 +92,10 @@
 }
 
 .dark-theme aside {
-  background-color: rgba(18, 20, 26, 0.68) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(155%);
-  backdrop-filter: blur(24px) saturate(155%);
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  background-color: rgba(14, 16, 22, 0.34) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  backdrop-filter: blur(36px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.14) !important;
 }
 
 .dark-theme .ruled-paper {
