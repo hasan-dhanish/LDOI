@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { currentUser, onlineMembers, signOut } = useLdoi();
 
   return (
-    <aside className="no-print w-full md:w-68 md:h-screen md:sticky md:top-0 shrink-0 bg-white/28 backdrop-blur-3xl saturate-150 border-b md:border-b-0 md:border-r border-white/45 shadow-[inset_-1px_0_0_rgba(255,255,255,0.35)] flex flex-col justify-between overflow-hidden">
+    <aside className="no-print w-full md:w-68 md:h-screen md:sticky md:top-0 shrink-0 bg-gradient-to-b from-white/45 to-white/20 backdrop-blur-3xl saturate-150 border-b md:border-b-0 md:border-r border-white/55 shadow-[inset_-1px_0_1px_rgba(255,255,255,0.65),8px_0_28px_rgba(35,33,30,0.08)] flex flex-col justify-between overflow-hidden">
       <div>
         {/* Brand Header */}
         <div className="p-4 border-b border-[#E2E0D8] flex items-center justify-between gap-2">

@@ -82,20 +82,32 @@
 }
 
 .dark-theme .paper-card {
-  background-color: rgba(24, 26, 33, 0.72);
-  -webkit-backdrop-filter: blur(22px) saturate(155%);
-  backdrop-filter: blur(22px) saturate(155%);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: linear-gradient(
+    145deg,
+    rgba(30, 33, 42, 0.54) 0%,
+    rgba(18, 20, 27, 0.38) 100%
+  );
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  backdrop-filter: blur(28px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 12px 32px rgba(0, 0, 0, 0.36);
+    inset 0 1px 1px rgba(255, 255, 255, 0.18),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.32),
+    0 18px 42px rgba(0, 0, 0, 0.38);
 }
 
 .dark-theme aside {
-  background-color: rgba(14, 16, 22, 0.34) !important;
+  background: linear-gradient(
+    165deg,
+    rgba(22, 25, 33, 0.44) 0%,
+    rgba(12, 14, 20, 0.28) 100%
+  ) !important;
   -webkit-backdrop-filter: blur(36px) saturate(180%);
   backdrop-filter: blur(36px) saturate(180%);
-  border-color: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow:
+    inset -1px 0 1px rgba(255, 255, 255, 0.14),
+    8px 0 32px rgba(0, 0, 0, 0.28);
 }
 
 .dark-theme .ruled-paper {
@@ -273,15 +285,20 @@
   line-height: 32px;
 }
 
-/* Frosted Paper & Ink Card */
+/* Frosted Glassmorphic Card */
 .paper-card {
-  background-color: rgba(255, 255, 255, 0.72);
-  -webkit-backdrop-filter: blur(22px) saturate(160%);
-  backdrop-filter: blur(22px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.56) 0%,
+    rgba(255, 255, 255, 0.34) 100%
+  );
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  backdrop-filter: blur(28px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.62);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    0 12px 32px rgba(35, 33, 30, 0.1);
+    inset 0 1px 1px rgba(255, 255, 255, 0.85),
+    inset 0 -1px 1px rgba(35, 33, 30, 0.06),
+    0 16px 38px rgba(35, 33, 30, 0.12);
 }
 
 @keyframes workspaceEnter {
