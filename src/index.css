@@ -96,20 +96,6 @@
     0 18px 42px rgba(0, 0, 0, 0.38);
 }
 
-.dark-theme aside {
-  background: linear-gradient(
-    165deg,
-    rgba(22, 25, 33, 0.44) 0%,
-    rgba(12, 14, 20, 0.28) 100%
-  ) !important;
-  -webkit-backdrop-filter: blur(36px) saturate(180%);
-  backdrop-filter: blur(36px) saturate(180%);
-  border-color: rgba(255, 255, 255, 0.16) !important;
-  box-shadow:
-    inset -1px 0 1px rgba(255, 255, 255, 0.14),
-    8px 0 32px rgba(0, 0, 0, 0.28);
-}
-
 .dark-theme .ruled-paper {
   background-color: #1b1d24;
   background-image: linear-gradient(to bottom, transparent 30px, #2e323d 31px, transparent 32px);

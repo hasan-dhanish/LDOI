@@ -41,10 +41,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { currentUser, onlineMembers, signOut } = useLdoi();
 
   return (
-    <aside className="no-print w-full md:w-68 md:h-screen md:sticky md:top-0 shrink-0 bg-gradient-to-b from-white/45 to-white/20 backdrop-blur-3xl saturate-150 border-b md:border-b-0 md:border-r border-white/55 shadow-[inset_-1px_0_1px_rgba(255,255,255,0.65),8px_0_28px_rgba(35,33,30,0.08)] flex flex-col justify-between overflow-hidden">
+    <aside className="no-print paper-card w-full md:w-68 md:my-3 md:ml-3 md:h-[calc(100vh-1.5rem)] md:rounded-2xl md:sticky md:top-3 shrink-0 flex flex-col justify-between overflow-hidden">
       <div>
         {/* Brand Header */}
-        <div className="p-4 border-b border-[#E2E0D8] flex items-center justify-between gap-2">
+        <div
+          className={`p-4 border-b flex items-center justify-between gap-2 ${
+            darkMode ? 'border-white/10' : 'border-black/10'
+          }`}
+        >
           <div className="flex items-center gap-3">
             <LdoiLogo size={36} />
             <div>
@@ -105,7 +109,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         {/* Live Team Presence Widget */}
-        <div className="hidden md:block mx-3 mt-3 p-3.5 rounded-2xl bg-[#F7F6F2] border border-[#E2E0D8]">
+        <div
+          className={`hidden md:block mx-3 mt-3 p-3.5 rounded-2xl border backdrop-blur-md ${
+            darkMode
+              ? 'bg-white/[0.05] border-white/12'
+              : 'bg-white/30 border-white/50'
+          }`}
+        >
           <div className="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] mb-2.5">
             Team Online
           </div>
@@ -140,7 +150,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer Profile Card */}
-      <div className="p-3 border-t border-[#E2E0D8]">
+      <div
+        className={`p-3 border-t ${
+          darkMode ? 'border-white/10' : 'border-black/10'
+        }`}
+      >
         <div className="flex items-center justify-between px-2 py-1.5">
           <div className="flex items-center gap-2 min-w-0">
             <span
