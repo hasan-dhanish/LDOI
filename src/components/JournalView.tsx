@@ -449,7 +449,7 @@ export const JournalView: React.FC = () => {
                     <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#52525B] mb-1.5">
                       Cover Color
                     </label>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {BOOK_COLORS.map((c) => (
                         <button
                           key={c}
@@ -463,6 +463,27 @@ export const JournalView: React.FC = () => {
                           {newBookColor === c && <Check className="w-3.5 h-3.5" />}
                         </button>
                       ))}
+
+                      <label
+                        title="Custom Color Wheel"
+                        className={`relative w-7 h-7 rounded-full cursor-pointer transition-transform flex items-center justify-center ${
+                          !BOOK_COLORS.includes(newBookColor)
+                            ? 'scale-110 ring-2 ring-offset-2 ring-[#0A5386]'
+                            : 'hover:scale-105'
+                        }`}
+                        style={{
+                          background:
+                            'conic-gradient(from 0deg, #ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444)',
+                        }}
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full bg-white shadow-sm pointer-events-none" />
+                        <input
+                          type="color"
+                          value={newBookColor}
+                          onChange={(e) => setNewBookColor(e.target.value)}
+                          className="sr-only"
+                        />
+                      </label>
                     </div>
                   </div>
 
