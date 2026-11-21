@@ -261,7 +261,7 @@ export const JournalView: React.FC = () => {
                   type="text"
                   value={draftTitle}
                   onChange={(e) => handleTitleChange(e.target.value)}
-                  className="notebook-title-input flex-1 text-lg font-semibold text-[#18181B] bg-transparent border-b border-transparent focus:border-[#0A5386] focus:outline-none pb-1"
+                  className="notebook-title-input flex-1 text-lg font-semibold text-[#18181B] bg-transparent border-b border-[#E4E2DC] focus:border-[#0A5386] focus:outline-none pb-2"
                 />
                 <div className="flex items-center gap-2 shrink-0">
                   {incomingTyping && incomingTyping.author !== currentUser?.name && (
