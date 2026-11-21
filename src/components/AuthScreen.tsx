@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { CheckCircle2, Lock, Mail, Moon, Sun } from 'lucide-react';
 import { TEAM_MEMBERS } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
@@ -32,7 +32,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   });
   const [password, setPassword] = useState('');
   const [memberName, setMemberName] = useState<MemberName>('Hasan');
+  const [revealedMember, setRevealedMember] = useState<MemberName | null>('Hasan');
+  const memberTimerRef = useRef<number | null>(null);
   const [error, setError] = useState('');
+
+  const handleSelectMember = (nextName: MemberName) => {
+    if (nextName === memberName && revealedMember === nextName) return;
+    if (memberTimerRef.current) window.clearTimeout(memberTimerRef.current);
+    setMemberName(nextName);
+    setRevealedMember(null);
+    memberTimerRef.current = window.setTimeout(() => {
+      setRevealedMember(nextName);
+    }, 200);
+  };
   const [busy, setBusy] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
   const [unlockLabel, setUnlockLabel] = useState('');
@@ -224,22 +236,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   >
                     <div className="flex items-center gap-2">
                       {TEAM_MEMBERS.map((m) => {
-                        const active = memberName === m.name;
+                        const selected = memberName === m.name;
+                        const expanded = revealedMember === m.name;
                         return (
                           <button
                             key={m.name}
                             type="button"
-                            onClick={() => setMemberName(m.name)}
+                            onClick={() => handleSelectMember(m.name)}
                             title={m.name}
-                            className={`ios-press flex items-center h-9 px-2 rounded-xl border text-xs font-semibold transition-all duration-300 ease-out overflow-hidden ${
-                              active
+                            className={`ios-press flex items-center h-9 px-2 rounded-xl border text-xs font-semibold transition-all duration-200 ease-out overflow-hidden ${
+                              selected
                                 ? darkMode
-                                  ? 'border-[#388BFD] bg-[#388BFD]/20 text-white pr-3'
-                                  : 'border-[#2E74B5] bg-[#2E74B5]/12 text-[#2E74B5] pr-3'
+                                  ? 'border-[#388BFD] bg-[#388BFD]/20 text-white'
+                                  : 'border-[#2E74B5] bg-[#2E74B5]/12 text-[#2E74B5]'
                                 : darkMode
                                 ? 'border-white/15 bg-white/8 text-zinc-200 hover:bg-white/15'
                                 : 'border-white/70 bg-white/60 text-[#23211E] hover:bg-white/85'
-                            }`}
+                            } ${expanded ? 'pr-3' : ''}`}
                           >
                             <span
                               className="w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold text-white shrink-0"
@@ -248,8 +261,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                               {m.initials}
                             </span>
                             <span
-                              className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-out ${
-                                active
+                              className={`whitespace-nowrap overflow-hidden transition-all duration-200 ease-out ${
+                                expanded
                                   ? 'max-w-[96px] opacity-100 ml-2'
                                   : 'max-w-0 opacity-0 ml-0'
                               }`}
