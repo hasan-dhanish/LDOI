@@ -7,6 +7,7 @@ import {
   FileText,
   GripHorizontal,
   Image as ImageIcon,
+  ListChecks,
   Maximize2,
   Minus,
   Plus,
@@ -17,7 +18,6 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { MEMBER_NAMES, PROJECT_CATEGORIES } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
 import {
   loadBoardPositions,
@@ -26,18 +26,11 @@ import {
   serializeRequirementCheckpoints,
   type BoardPositions,
 } from '../lib/pinboard';
-import type { MemberName, Project, ProjectCategory, ProjectStatus } from '../types';
+import type { Project, ProjectNote } from '../types';
 
 interface ProjectPinboardProps {
   project: Project;
 }
-
-const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
-  checkpoints: { x: 24, y: 72 },
-  spec: { x: 380, y: 72 },
-  workflow: { x: 736, y: 72 },
-  controls: { x: 24, y: 408 },
-};
 
 function getFileBadge(name: string): string {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
@@ -47,15 +40,210 @@ function getFileBadge(name: string): string {
   return ext.toUpperCase().slice(0, 5) || 'FILE';
 }
 
+const FloatingPagePin: React.FC<{
+  note: ProjectNote;
+  pos: { x: number; y: number };
+  onDragStart: (e: React.PointerEvent) => void;
+  onUpdate: (content: string) => void;
+  onDelete: () => void;
+}> = ({ note, pos, onDragStart, onUpdate, onDelete }) => {
+  const raw = note.content.slice('[PIN_PAGE]'.length);
+  const newlineIdx = raw.indexOf('\n');
+  const initialHeading = newlineIdx === -1 ? raw : raw.slice(0, newlineIdx);
+  const initialBody = newlineIdx === -1 ? '' : raw.slice(newlineIdx + 1);
+
+  const [heading, setHeading] = useState(initialHeading);
+  const [body, setBody] = useState(initialBody);
+  const saveTimerRef = useRef<number | null>(null);
+
+  const scheduleSave = (nextHeading: string, nextBody: string) => {
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      onUpdate(`[PIN_PAGE]${nextHeading}\n${nextBody}`);
+    }, 250);
+  };
+
+  return (
+    <div
+      style={{ left: pos.x, top: pos.y }}
+      className="group absolute w-[280px] p-2 select-none"
+    >
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2 right-0 z-10 flex items-center gap-1">
+        <div
+          onPointerDown={onDragStart}
+          title="Drag page"
+          className="w-6 h-6 rounded-full bg-white/90 border border-[#E4E2DC] text-[#52525B] flex items-center justify-center shadow-sm cursor-grab active:cursor-grabbing"
+        >
+          <GripHorizontal className="w-3.5 h-3.5" />
+        </div>
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={onDelete}
+          title="Delete page"
+          className="w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-sm"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <input
+        type="text"
+        value={heading}
+        onPointerDown={(e) => e.stopPropagation()}
+        onChange={(e) => {
+          setHeading(e.target.value);
+          scheduleSave(e.target.value, body);
+        }}
+        placeholder="Page title..."
+        className="w-full text-sm font-bold text-[#18181B] bg-transparent focus:outline-none placeholder:text-[#A1A1AA]"
+      />
+      <textarea
+        rows={5}
+        value={body}
+        onPointerDown={(e) => e.stopPropagation()}
+        onChange={(e) => {
+          setBody(e.target.value);
+          scheduleSave(heading, e.target.value);
+        }}
+        placeholder="Write notes..."
+        className="mt-1 w-full text-xs text-[#3F3F46] leading-relaxed bg-transparent focus:outline-none resize-y placeholder:text-[#A1A1AA]"
+      />
+    </div>
+  );
+};
+
+const FloatingChecklistPin: React.FC<{
+  note: ProjectNote;
+  pos: { x: number; y: number };
+  onDragStart: (e: React.PointerEvent) => void;
+  onUpdate: (content: string) => void;
+  onDelete: () => void;
+}> = ({ note, pos, onDragStart, onUpdate, onDelete }) => {
+  const raw = note.content.slice('[PIN_CHECKLIST]'.length);
+  const newlineIdx = raw.indexOf('\n');
+  const initialHeading = newlineIdx === -1 ? raw : raw.slice(0, newlineIdx);
+  const initialJson = newlineIdx === -1 ? '[]' : raw.slice(newlineIdx + 1);
+
+  const [heading, setHeading] = useState(initialHeading);
+  const [newItem, setNewItem] = useState('');
+  const items = parseRequirementCheckpoints(initialJson);
+
+  const saveAll = (nextHeading: string, nextItems: typeof items) => {
+    onUpdate(`[PIN_CHECKLIST]${nextHeading}\n${serializeRequirementCheckpoints(nextItems)}`);
+  };
+
+  return (
+    <div
+      style={{ left: pos.x, top: pos.y }}
+      className="group absolute w-[270px] p-2 select-none"
+    >
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2 right-0 z-10 flex items-center gap-1">
+        <div
+          onPointerDown={onDragStart}
+          title="Drag checklist"
+          className="w-6 h-6 rounded-full bg-white/90 border border-[#E4E2DC] text-[#52525B] flex items-center justify-center shadow-sm cursor-grab active:cursor-grabbing"
+        >
+          <GripHorizontal className="w-3.5 h-3.5" />
+        </div>
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={onDelete}
+          title="Delete checklist"
+          className="w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-sm"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <input
+        type="text"
+        value={heading}
+        onPointerDown={(e) => e.stopPropagation()}
+        onChange={(e) => {
+          setHeading(e.target.value);
+          saveAll(e.target.value, items);
+        }}
+        placeholder="Checklist title..."
+        className="w-full text-sm font-bold text-[#18181B] bg-transparent focus:outline-none placeholder:text-[#A1A1AA]"
+      />
+
+      <div className="mt-1.5 space-y-1">
+        {items.map((cp) => (
+          <div key={cp.id} className="flex items-start justify-between gap-1.5">
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() =>
+                saveAll(
+                  heading,
+                  items.map((c) => (c.id === cp.id ? { ...c, done: !c.done } : c))
+                )
+              }
+              className="flex items-start gap-2 text-left flex-1 min-w-0"
+            >
+              {cp.done ? (
+                <CheckSquare className="w-3.5 h-3.5 text-[#0A5386] shrink-0 mt-0.5" />
+              ) : (
+                <Square className="w-3.5 h-3.5 text-[#71717A] shrink-0 mt-0.5" />
+              )}
+              <span
+                className={`text-xs leading-snug ${
+                  cp.done ? 'line-through text-[#71717A]' : 'text-[#18181B]'
+                }`}
+              >
+                {cp.text}
+              </span>
+            </button>
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() =>
+                saveAll(
+                  heading,
+                  items.filter((c) => c.id !== cp.id)
+                )
+              }
+              className="opacity-0 group-hover:opacity-100 text-[#A1A1AA] hover:text-[#DC2626] shrink-0"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!newItem.trim()) return;
+          saveAll(heading, [
+            ...items,
+            { id: `cp_${Date.now()}`, text: newItem.trim(), done: false },
+          ]);
+          setNewItem('');
+        }}
+        className="mt-2 flex items-center gap-1"
+      >
+        <input
+          type="text"
+          value={newItem}
+          onPointerDown={(e) => e.stopPropagation()}
+          onChange={(e) => setNewItem(e.target.value)}
+          placeholder="+ Add item..."
+          className="flex-1 text-xs bg-transparent focus:outline-none text-[#18181B] placeholder:text-[#A1A1AA]"
+        />
+      </form>
+    </div>
+  );
+};
+
 export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => {
   const {
-    workflowSteps,
     projectNotes,
     documents,
-    updateProject,
-    addWorkflowStep,
-    toggleWorkflowStep,
     addProjectNote,
+    updateProjectNote,
     deleteProjectNote,
     uploadDocument,
     deleteDocument,
@@ -67,12 +255,9 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panRef = useRef({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    zoomRef.current = zoom;
-  }, [zoom]);
   const dragRef = useRef<{
     cardId: string;
     startX: number;
@@ -81,32 +266,42 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     origY: number;
   } | null>(null);
 
-  const [newCp, setNewCp] = useState('');
-  const [newStep, setNewStep] = useState('');
-  const [newStepAssignee, setNewStepAssignee] = useState<MemberName>('Hasan');
-  const [showAddPage, setShowAddPage] = useState(false);
-  const [pageTitle, setPageTitle] = useState('');
-  const [pageBody, setPageBody] = useState('');
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
 
-  const checkpoints = parseRequirementCheckpoints(project.requirements);
-  const steps = workflowSteps
-    .filter((s) => s.projectId === project.id)
-    .sort((a, b) => a.stepOrder - b.stepOrder);
+  useEffect(() => {
+    panRef.current = pan;
+  }, [pan]);
+
   const projectDocs = documents.filter((d) => d.projectId === project.id);
   const pinnedPages = projectNotes.filter(
     (n) => n.projectId === project.id && n.content.startsWith('[PIN_PAGE]')
   );
+  const pinnedChecklists = projectNotes.filter(
+    (n) => n.projectId === project.id && n.content.startsWith('[PIN_CHECKLIST]')
+  );
+
+  const getViewportCenterWorld = () => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const vw = rect ? rect.width : window.innerWidth;
+    const vh = rect ? rect.height : window.innerHeight;
+    return {
+      x: Math.round((-panRef.current.x + vw / 2 - 130) / zoomRef.current),
+      y: Math.round((-panRef.current.y + vh / 2 - 80) / zoomRef.current),
+    };
+  };
 
   const getPos = (cardId: string, fallbackIndex = 0): { x: number; y: number } => {
     if (positions[cardId]) return positions[cardId];
-    if (DEFAULT_POSITIONS[cardId]) return DEFAULT_POSITIONS[cardId];
-    const col = (fallbackIndex % 3) + 1;
-    const row = Math.floor(fallbackIndex / 3);
-    return { x: 24 + col * 356, y: 360 + row * 260 };
+    const col = fallbackIndex % 4;
+    const row = Math.floor(fallbackIndex / 4);
+    return { x: 80 + col * 300, y: 100 + row * 260 };
   };
 
   const startDrag = (cardId: string, e: React.PointerEvent, fallbackIdx = 0) => {
     e.preventDefault();
+    e.stopPropagation();
     const pos = getPos(cardId, fallbackIdx);
     dragRef.current = {
       cardId,
@@ -118,8 +313,8 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
     const onMove = (ev: PointerEvent) => {
       if (!dragRef.current) return;
-      const dx = (ev.clientX - dragRef.current.startX) / zoom;
-      const dy = (ev.clientY - dragRef.current.startY) / zoom;
+      const dx = (ev.clientX - dragRef.current.startX) / zoomRef.current;
+      const dy = (ev.clientY - dragRef.current.startY) / zoomRef.current;
       const nx = Math.round(dragRef.current.origX + dx);
       const ny = Math.round(dragRef.current.origY + dy);
       setPositions((prev) => {
@@ -139,41 +334,6 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     window.addEventListener('pointerup', onUp);
   };
 
-  const handleToggleCheckpoint = (cpId: string) => {
-    const next = checkpoints.map((c) => (c.id === cpId ? { ...c, done: !c.done } : c));
-    updateProject(project.id, { requirements: serializeRequirementCheckpoints(next) });
-  };
-
-  const handleAddCheckpoint = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCp.trim()) return;
-    const next = [
-      ...checkpoints,
-      { id: `cp_${Date.now()}`, text: newCp.trim(), done: false },
-    ];
-    updateProject(project.id, { requirements: serializeRequirementCheckpoints(next) });
-    setNewCp('');
-  };
-
-  const handleRemoveCheckpoint = (cpId: string) => {
-    const next = checkpoints.filter((c) => c.id !== cpId);
-    updateProject(project.id, { requirements: serializeRequirementCheckpoints(next) });
-  };
-
-  const handleAddStep = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newStep.trim()) return;
-    await addWorkflowStep({
-      projectId: project.id,
-      stepOrder: steps.length + 1,
-      title: newStep.trim(),
-      assignee: newStepAssignee,
-      dueDate: '',
-      completed: false,
-    });
-    setNewStep('');
-  };
-
   const handleUploadInspoOrFile = async (
     e: React.ChangeEvent<HTMLInputElement>,
     docType: 'Spec' | 'Other'
@@ -184,13 +344,12 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     e.target.value = '';
   };
 
-  const handleAddPinnedPage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pageTitle.trim()) return;
-    await addProjectNote(project.id, `[PIN_PAGE]${pageTitle.trim()}\n${pageBody.trim()}`);
-    setPageTitle('');
-    setPageBody('');
-    setShowAddPage(false);
+  const handleInstantAddPage = async () => {
+    await addProjectNote(project.id, '[PIN_PAGE]\n');
+  };
+
+  const handleInstantAddChecklist = async () => {
+    await addProjectNote(project.id, '[PIN_CHECKLIST]Checklist\n[]');
   };
 
   const handleResetLayout = () => {
@@ -208,8 +367,8 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     const cy = rect ? clientY - rect.top : clientY;
     const nextZoom = clampZoom(nextZoomRaw);
     setPan((prevPan) => {
-      const worldX = (cx - prevPan.x) / zoom;
-      const worldY = (cy - prevPan.y) / zoom;
+      const worldX = (cx - prevPan.x) / zoomRef.current;
+      const worldY = (cy - prevPan.y) / zoomRef.current;
       return {
         x: cx - worldX * nextZoom,
         y: cy - worldY * nextZoom,
@@ -240,7 +399,6 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     }
 
     const onNativeWheel = (e: WheelEvent) => {
-      // Non-passive listener blocks browser history back/forward swipe & browser pinch-zoom
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
         const currentZoom = zoomRef.current;
@@ -306,19 +464,28 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     setPan({ x: 0, y: 0 });
   };
 
-  const cpDone = checkpoints.filter((c) => c.done).length;
+  const totalPins = projectDocs.length + pinnedPages.length + pinnedChecklists.length;
 
   return (
     <div className="flex-1 flex flex-col min-h-0 relative">
-      {/* Fixed Floating Pill Bar */}
+      {/* Fixed Floating Pill Bar (Bottom-Center) */}
       <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-2 py-1.5 shadow-2xl border border-[#E4E2DC] flex items-center gap-1.5 max-w-[95vw] overflow-x-auto backdrop-blur-md">
         <button
           type="button"
-          onClick={() => setShowAddPage((v) => !v)}
+          onClick={handleInstantAddPage}
           className="ios-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#0A5386] text-white rounded-full"
         >
           <StickyNote className="w-3.5 h-3.5" />
-          Add Spec / Page
+          Add Page
+        </button>
+
+        <button
+          type="button"
+          onClick={handleInstantAddChecklist}
+          className="ios-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#133F47] text-white rounded-full"
+        >
+          <ListChecks className="w-3.5 h-3.5" />
+          Add Checklist
         </button>
 
         <label className="ios-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#254454] text-white rounded-full cursor-pointer">
@@ -354,46 +521,6 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           <span className="hidden sm:inline">Reset</span>
         </button>
       </div>
-
-      {/* Floating Add Page Drawer */}
-      {showAddPage && (
-        <form
-          onSubmit={handleAddPinnedPage}
-          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 w-[min(420px,calc(100vw-2rem))] paper-card rounded-2xl p-4 space-y-2.5 shadow-2xl"
-        >
-          <div className="text-xs font-semibold text-[#18181B]">Pin a New Page / Note</div>
-          <input
-            type="text"
-            required
-            value={pageTitle}
-            onChange={(e) => setPageTitle(e.target.value)}
-            placeholder="Page title (e.g. Hardware Wiring, API Spec)"
-            className="w-full px-3 py-1.5 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
-          />
-          <textarea
-            rows={3}
-            value={pageBody}
-            onChange={(e) => setPageBody(e.target.value)}
-            placeholder="Write page content..."
-            className="w-full px-3 py-1.5 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
-          />
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowAddPage(false)}
-              className="px-3 py-1 text-xs text-[#52525B]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-3.5 py-1 text-xs font-semibold bg-[#0A5386] text-white rounded-lg"
-            >
-              Pin to Board
-            </button>
-          </div>
-        </form>
-      )}
 
       {/* Fixed Floating Zoom + Back to Center Pill (Bottom-Right) */}
       <div className="fixed bottom-16 right-4 sm:bottom-5 sm:right-5 z-40 paper-card rounded-full px-2.5 py-1.5 shadow-2xl border border-[#E4E2DC] flex items-center gap-1.5 backdrop-blur-md">
@@ -448,6 +575,20 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         </button>
       </div>
 
+      {/* Empty Canvas Subtle Hint */}
+      {totalPins === 0 && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="text-center px-4">
+            <p className="text-sm font-medium text-[#71717A]">
+              Blank infinite board for {project.title}
+            </p>
+            <p className="text-xs text-[#A1A1AA] mt-1">
+              Use the floating pill below to drop pages, checklists, design inspo, or files anywhere.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* True Infinite Pan & Zoom Matrix Canvas (Dotted Matrix, No Scrollbars) */}
       <div
         ref={viewportRef}
@@ -473,311 +614,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           }}
           className="absolute top-0 left-0 will-change-transform select-text"
         >
-          {/* 1. Requirement Checkpoints Card */}
-          <div
-            style={{
-              left: getPos('checkpoints').x,
-              top: getPos('checkpoints').y,
-            }}
-            className="absolute w-[340px] paper-card rounded-2xl border-t-[3px] border-t-[#0A5386] shadow-[0_14px_34px_rgba(24,24,27,0.08),0_2px_6px_rgba(24,24,27,0.04)] overflow-hidden"
-          >
-            <div
-              onPointerDown={(e) => startDrag('checkpoints', e)}
-              className="px-4 py-3 border-b border-[#E4E2DC]/80 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
-            >
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#0A5386] ring-2 ring-[#0A5386]/20 shrink-0" />
-                <div>
-                  <div className="text-[10px] font-mono-num uppercase tracking-wider text-[#71717A]">
-                    01 · Checklist
-                  </div>
-                  <div className="text-xs font-bold text-[#18181B]">
-                    Requirements ({cpDone}/{checkpoints.length})
-                  </div>
-                </div>
-              </div>
-              <GripHorizontal className="w-4 h-4 text-[#A1A1AA]" />
-            </div>
-
-            <div className="p-4 space-y-3">
-              <div className="max-h-52 overflow-y-auto space-y-1.5">
-                {checkpoints.length === 0 ? (
-                  <div className="text-[11px] text-[#71717A] py-4 text-center">
-                    No requirement checkpoints yet.
-                  </div>
-                ) : (
-                  checkpoints.map((cp) => (
-                    <div
-                      key={cp.id}
-                      className="flex items-start justify-between gap-2 px-2.5 py-2 rounded-xl border border-[#E4E2DC]/70 bg-[#FAF9F6]/70"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleToggleCheckpoint(cp.id)}
-                        className="flex items-start gap-2 text-left flex-1 min-w-0"
-                      >
-                        {cp.done ? (
-                          <CheckSquare className="w-3.5 h-3.5 text-[#0A5386] shrink-0 mt-0.5" />
-                        ) : (
-                          <Square className="w-3.5 h-3.5 text-[#A1A1AA] shrink-0 mt-0.5" />
-                        )}
-                        <span
-                          className={`text-xs leading-snug ${
-                            cp.done ? 'line-through text-[#71717A]' : 'text-[#18181B]'
-                          }`}
-                        >
-                          {cp.text}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCheckpoint(cp.id)}
-                        className="text-[#A1A1AA] hover:text-[#DC2626] shrink-0"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <form onSubmit={handleAddCheckpoint} className="flex gap-1.5 pt-1 border-t border-[#E4E2DC]/60">
-                <input
-                  type="text"
-                  value={newCp}
-                  onChange={(e) => setNewCp(e.target.value)}
-                  placeholder="Add requirement..."
-                  className="flex-1 px-2.5 py-1.5 text-xs bg-transparent focus:outline-none placeholder:text-[#A1A1AA]"
-                />
-                <button
-                  type="submit"
-                  className="ios-press p-1.5 bg-[#0A5386] text-white rounded-lg"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              </form>
-            </div>
-          </div>
-
-          {/* 2. Spec & Team Idea Page Card */}
-          <div
-            style={{ left: getPos('spec').x, top: getPos('spec').y }}
-            className="absolute w-[340px] paper-card rounded-2xl border-t-[3px] border-t-[#254454] shadow-[0_14px_34px_rgba(24,24,27,0.08),0_2px_6px_rgba(24,24,27,0.04)] overflow-hidden"
-          >
-            <div
-              onPointerDown={(e) => startDrag('spec', e)}
-              className="px-4 py-3 border-b border-[#E4E2DC]/80 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
-            >
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#254454] ring-2 ring-[#254454]/20 shrink-0" />
-                <div>
-                  <div className="text-[10px] font-mono-num uppercase tracking-wider text-[#71717A]">
-                    02 · Spec Sheet
-                  </div>
-                  <div className="text-xs font-bold text-[#18181B]">Spec &amp; Team Idea</div>
-                </div>
-              </div>
-              <GripHorizontal className="w-4 h-4 text-[#A1A1AA]" />
-            </div>
-            <div className="p-4">
-              <textarea
-                rows={9}
-                value={project.teamIdea}
-                onChange={(e) => updateProject(project.id, { teamIdea: e.target.value })}
-                placeholder="Write architecture, hardware specs, and team approach..."
-                className="w-full text-xs leading-relaxed bg-transparent focus:outline-none resize-y placeholder:text-[#A1A1AA]"
-              />
-            </div>
-          </div>
-
-          {/* 3. Workflow Steps Card */}
-          <div
-            style={{ left: getPos('workflow').x, top: getPos('workflow').y }}
-            className="absolute w-[340px] paper-card rounded-2xl border-t-[3px] border-t-[#133F47] shadow-[0_14px_34px_rgba(24,24,27,0.08),0_2px_6px_rgba(24,24,27,0.04)] overflow-hidden"
-          >
-            <div
-              onPointerDown={(e) => startDrag('workflow', e)}
-              className="px-4 py-3 border-b border-[#E4E2DC]/80 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
-            >
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#133F47] ring-2 ring-[#133F47]/20 shrink-0" />
-                <div>
-                  <div className="text-[10px] font-mono-num uppercase tracking-wider text-[#71717A]">
-                    03 · Execution
-                  </div>
-                  <div className="text-xs font-bold text-[#18181B]">
-                    Workflow ({steps.filter((s) => s.completed).length}/{steps.length})
-                  </div>
-                </div>
-              </div>
-              <GripHorizontal className="w-4 h-4 text-[#A1A1AA]" />
-            </div>
-            <div className="p-4 space-y-3">
-              <div className="max-h-48 overflow-y-auto space-y-1.5">
-                {steps.length === 0 ? (
-                  <div className="text-[11px] text-[#71717A] py-3 text-center">
-                    No workflow steps yet.
-                  </div>
-                ) : (
-                  steps.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => toggleWorkflowStep(s.id)}
-                      className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl border border-[#E4E2DC]/70 bg-[#FAF9F6]/70 text-left"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {s.completed ? (
-                          <CheckSquare className="w-3.5 h-3.5 text-[#133F47] shrink-0" />
-                        ) : (
-                          <Square className="w-3.5 h-3.5 text-[#A1A1AA] shrink-0" />
-                        )}
-                        <span
-                          className={`text-xs truncate ${
-                            s.completed ? 'line-through text-[#71717A]' : 'text-[#18181B]'
-                          }`}
-                        >
-                          {s.title}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white border border-[#E4E2DC] shrink-0">
-                        {s.assignee}
-                      </span>
-                    </button>
-                  ))
-                )}
-              </div>
-              <form onSubmit={handleAddStep} className="grid grid-cols-12 gap-1.5 pt-1 border-t border-[#E4E2DC]/60">
-                <input
-                  type="text"
-                  value={newStep}
-                  onChange={(e) => setNewStep(e.target.value)}
-                  placeholder="Add workflow step..."
-                  className="col-span-6 px-2 py-1.5 text-xs bg-transparent focus:outline-none placeholder:text-[#A1A1AA]"
-                />
-                <select
-                  value={newStepAssignee}
-                  onChange={(e) => setNewStepAssignee(e.target.value as MemberName)}
-                  className="col-span-4 px-1.5 py-1.5 text-[11px] bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
-                >
-                  {MEMBER_NAMES.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="submit"
-                  className="ios-press col-span-2 flex items-center justify-center bg-[#133F47] text-white rounded-lg"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              </form>
-            </div>
-          </div>
-
-          {/* 4. Project Controls Card */}
-          <div
-            style={{ left: getPos('controls').x, top: getPos('controls').y }}
-            className="absolute w-[340px] paper-card rounded-2xl border-t-[3px] border-t-[#3F3F46] shadow-[0_14px_34px_rgba(24,24,27,0.08),0_2px_6px_rgba(24,24,27,0.04)] overflow-hidden"
-          >
-            <div
-              onPointerDown={(e) => startDrag('controls', e)}
-              className="px-4 py-3 border-b border-[#E4E2DC]/80 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
-            >
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#3F3F46] ring-2 ring-[#3F3F46]/20 shrink-0" />
-                <div>
-                  <div className="text-[10px] font-mono-num uppercase tracking-wider text-[#71717A]">
-                    04 · Brief
-                  </div>
-                  <div className="text-xs font-bold text-[#18181B]">Project Details</div>
-                </div>
-              </div>
-              <GripHorizontal className="w-4 h-4 text-[#A1A1AA]" />
-            </div>
-            <div className="p-4 space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2.5">
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-[#71717A] mb-1">
-                    Project
-                  </div>
-                  <input
-                    type="text"
-                    value={project.title}
-                    onChange={(e) => updateProject(project.id, { title: e.target.value })}
-                    placeholder="Project Name"
-                    className="w-full px-2.5 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
-                  />
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-[#71717A] mb-1">
-                    Client
-                  </div>
-                  <input
-                    type="text"
-                    value={project.clientName}
-                    onChange={(e) => updateProject(project.id, { clientName: e.target.value })}
-                    placeholder="Client Name"
-                    className="w-full px-2.5 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-[#71717A] mb-1">
-                    Status
-                  </div>
-                  <select
-                    value={project.status}
-                    onChange={(e) =>
-                      updateProject(project.id, { status: e.target.value as ProjectStatus })
-                    }
-                    className="w-full px-2 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
-                  >
-                    {(['Planning', 'Active', 'Review', 'Completed', 'Archived'] as ProjectStatus[]).map(
-                      (s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-[#71717A] mb-1">
-                    Category
-                  </div>
-                  <select
-                    value={project.category}
-                    onChange={(e) =>
-                      updateProject(project.id, { category: e.target.value as ProjectCategory })
-                    }
-                    className="w-full px-2 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
-                  >
-                    {PROJECT_CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-[#71717A] mb-1">
-                    Deadline
-                  </div>
-                  <input
-                    type="date"
-                    value={project.deadline}
-                    onChange={(e) => updateProject(project.id, { deadline: e.target.value })}
-                    className="w-full px-1.5 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 5. Pinned Design Inspo Images & Uploaded Documents (Borderless Floating Pins) */}
+          {/* Pinned Design Inspo Images & Uploaded Files (Borderless Floating Pins) */}
           {projectDocs.map((doc, idx) => {
             const cardId = `doc_${doc.id}`;
             const pos = getPos(cardId, idx);
@@ -861,35 +698,37 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
             );
           })}
 
-          {/* 6. Custom Pinned Pages (Borderless Floating Pages) */}
+          {/* Borderless Floating Pages (Editable In-Place) */}
           {pinnedPages.map((note, idx) => {
             const cardId = `page_${note.id}`;
-            const pos = getPos(cardId, projectDocs.length + idx);
-            const raw = note.content.slice('[PIN_PAGE]'.length);
-            const [heading, ...rest] = raw.split('\n');
+            const fallbackPos = getPos(cardId, projectDocs.length + idx);
             return (
-              <div
+              <FloatingPagePin
                 key={note.id}
-                style={{ left: pos.x, top: pos.y }}
-                onPointerDown={(e) => startDrag(cardId, e, projectDocs.length + idx)}
-                className="group absolute w-[260px] cursor-grab active:cursor-grabbing select-none p-2"
-              >
-                <button
-                  type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => deleteProjectNote(note.id)}
-                  title="Delete page"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-md"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-                <div className="text-sm font-bold text-[#18181B] leading-snug">
-                  {heading || 'Pinned Page'}
-                </div>
-                <div className="mt-1.5 text-xs text-[#3F3F46] whitespace-pre-wrap leading-relaxed select-text">
-                  {rest.join('\n') || 'Empty page'}
-                </div>
-              </div>
+                note={note}
+                pos={positions[cardId] ?? fallbackPos ?? getViewportCenterWorld()}
+                onDragStart={(e) => startDrag(cardId, e, projectDocs.length + idx)}
+                onUpdate={(content) => updateProjectNote(note.id, content)}
+                onDelete={() => deleteProjectNote(note.id)}
+              />
+            );
+          })}
+
+          {/* Borderless Floating Checklists (Interactive In-Place) */}
+          {pinnedChecklists.map((note, idx) => {
+            const cardId = `chk_${note.id}`;
+            const fallbackPos = getPos(cardId, projectDocs.length + pinnedPages.length + idx);
+            return (
+              <FloatingChecklistPin
+                key={note.id}
+                note={note}
+                pos={positions[cardId] ?? fallbackPos ?? getViewportCenterWorld()}
+                onDragStart={(e) =>
+                  startDrag(cardId, e, projectDocs.length + pinnedPages.length + idx)
+                }
+                onUpdate={(content) => updateProjectNote(note.id, content)}
+                onDelete={() => deleteProjectNote(note.id)}
+              />
             );
           })}
         </div>

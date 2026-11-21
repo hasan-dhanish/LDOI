@@ -72,6 +72,7 @@ interface LdoiContextValue extends LdoiState {
   deleteWorkflowStep: (id: string) => Promise<void>;
 
   addProjectNote: (projectId: string, content: string) => Promise<void>;
+  updateProjectNote: (id: string, content: string) => Promise<void>;
   deleteProjectNote: (id: string) => Promise<void>;
   addExpense: (input: Omit<ExpenseItem, 'id' | 'addedBy'>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
@@ -650,6 +651,19 @@ export const LdoiProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [currentUser, syncMode, commitLocalState]
   );
 
+  const updateProjectNote = useCallback(
+    async (id: string, content: string) => {
+      if (syncMode === 'supabase' && supabase) {
+        await supabase.from('project_notes').update({ content }).eq('id', id);
+      }
+      commitLocalState((prev) => ({
+        ...prev,
+        projectNotes: prev.projectNotes.map((n) => (n.id === id ? { ...n, content } : n)),
+      }));
+    },
+    [syncMode, commitLocalState]
+  );
+
   const deleteProjectNote = useCallback(
     async (id: string) => {
       if (syncMode === 'supabase' && supabase) {
@@ -970,6 +984,7 @@ export const LdoiProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toggleWorkflowStep,
       deleteWorkflowStep,
       addProjectNote,
+      updateProjectNote,
       deleteProjectNote,
       addExpense,
       deleteExpense,
@@ -1004,6 +1019,7 @@ export const LdoiProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toggleWorkflowStep,
       deleteWorkflowStep,
       addProjectNote,
+      updateProjectNote,
       deleteProjectNote,
       addExpense,
       deleteExpense,
