@@ -66,7 +66,9 @@
 
 .dark-theme .ruled-paper {
   background-color: #1b1d24;
-  background-image: linear-gradient(to bottom, transparent 31px, #2b2e38 32px);
+  background-image: linear-gradient(to bottom, transparent 30px, #2e323d 31px, transparent 32px);
+  background-origin: content-box;
+  background-attachment: local;
   color: #f4f4f5;
 }
 
@@ -90,6 +92,7 @@
 .dark-theme .bg-\[\#FAF9F6\],
 .dark-theme .bg-\[\#FCFBF8\],
 .dark-theme .bg-\[\#F7F6F2\],
+.dark-theme .bg-\[\#F7F4EC\],
 .dark-theme .bg-\[\#F2F1EC\],
 .dark-theme .bg-\[\#F4F3EE\] {
   background-color: #292c36 !important;
@@ -171,11 +174,13 @@
     0 24px 56px rgba(0, 0, 0, 0.45);
 }
 
-/* Ruled notebook paper effect */
+/* Ruled notebook paper effect (aligned to text baseline via content-box) */
 .ruled-paper {
   background-color: #fcfbf8;
-  background-image: linear-gradient(to bottom, transparent 31px, #e8e2d5 32px);
+  background-image: linear-gradient(to bottom, transparent 30px, #e5dfd1 31px, transparent 32px);
   background-size: 100% 32px;
+  background-origin: content-box;
+  background-attachment: local;
   line-height: 32px;
 }
 

@@ -165,19 +165,21 @@ export const JournalView: React.FC = () => {
       {/* Realistic Physical Hardcover Ring-Bound Open Notebook */}
       <div className="p-2.5 sm:p-3 rounded-[22px] bg-[#2C2925] shadow-[0_18px_44px_rgba(0,0,0,0.28)] border border-black/30">
         <div className="relative rounded-xl overflow-hidden grid lg:grid-cols-12 min-h-[560px] bg-[#FCFBF8] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]">
-          {/* Realistic Metallic Twin-Loop Binder Rings + Punch Holes (Desktop) */}
+          {/* Realistic Metallic Twin-Loop Binder Rings + Punched Holes (Desktop) */}
           <div className="hidden lg:flex flex-col justify-evenly items-center absolute left-1/3 -translate-x-1/2 inset-y-4 z-20 pointer-events-none">
             {[0, 1, 2, 3, 4].map((ring) => (
-              <div key={ring} className="flex items-center">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#D8D3C8] border border-black/25 shadow-inner" />
-                <span className="w-6 h-2.5 -mx-1 rounded-sm bg-gradient-to-b from-[#E5E7EB] via-[#9CA3AF] to-[#4B5563] border border-black/30 shadow-sm" />
-                <span className="w-2.5 h-2.5 rounded-full bg-[#D8D3C8] border border-black/25 shadow-inner" />
+              <div key={ring} className="relative flex items-center justify-center w-11 h-4">
+                {/* Left & Right Punched Holes */}
+                <span className="absolute left-0.5 w-3 h-3 rounded-full bg-[#1C1B19] border border-black/40 shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]" />
+                <span className="absolute right-0.5 w-3 h-3 rounded-full bg-[#1C1B19] border border-black/40 shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]" />
+                {/* Metallic Ring Looping Into Both Holes */}
+                <span className="relative z-10 w-8 h-2 rounded-full bg-gradient-to-b from-[#F3F4F6] via-[#9CA3AF] to-[#374151] border border-black/35 shadow-[0_2px_4px_rgba(0,0,0,0.35)]" />
               </div>
             ))}
           </div>
 
           {/* Left Page: Index of Ideas & Learnings with Spine Shadow */}
-          <div className="lg:col-span-4 bg-[#F7F4EC] border-b lg:border-b-0 lg:border-r border-[#D6D0C2] p-5 lg:pr-7 flex flex-col shadow-[inset_-16px_0_24px_-16px_rgba(0,0,0,0.16)]">
+          <div className="lg:col-span-4 bg-[#F7F4EC] border-b lg:border-b-0 lg:border-r border-[#D6D0C2] p-5 lg:pr-8 flex flex-col shadow-[inset_-16px_0_24px_-16px_rgba(0,0,0,0.18)]">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-[#52525B]">
               Notebook Index
