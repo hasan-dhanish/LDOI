@@ -20,6 +20,9 @@ export const JournalView: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(journalEntries[0]?.id ?? null);
   const [draftContent, setDraftContent] = useState('');
   const saveTimerRef = useRef<number | null>(null);
+  const lastLocalEditRef = useRef<number>(0);
+  const latestDraftRef = useRef<string>('');
+  const lastEntryIdRef = useRef<string | null>(null);
 
   const filtered = journalEntries.filter((e) =>
     kindFilter === 'All' ? true : e.kind === kindFilter
@@ -32,14 +35,26 @@ export const JournalView: React.FC = () => {
   const incomingTyping = typingKey ? liveTypingMap[typingKey] : undefined;
 
   useEffect(() => {
-    if (activeEntry && (!incomingTyping || incomingTyping.author === currentUser?.name)) {
+    if (!activeEntry) return;
+    const switchedEntry = lastEntryIdRef.current !== activeEntry.id;
+    if (switchedEntry) {
+      lastEntryIdRef.current = activeEntry.id;
+      lastLocalEditRef.current = 0;
+    }
+    const recentlyEdited = Date.now() - lastLocalEditRef.current < 1800;
+    if (
+      (switchedEntry || !recentlyEdited) &&
+      (!incomingTyping || incomingTyping.author === currentUser?.name)
+    ) {
       setDraftContent(activeEntry.content);
+      latestDraftRef.current = activeEntry.content;
     }
   }, [activeEntry?.id, activeEntry?.content, incomingTyping, currentUser?.name, activeEntry]);
 
   useEffect(() => {
     if (incomingTyping && incomingTyping.author !== currentUser?.name) {
       setDraftContent(incomingTyping.text);
+      latestDraftRef.current = incomingTyping.text;
     }
   }, [incomingTyping, currentUser?.name]);
 
@@ -55,12 +70,15 @@ export const JournalView: React.FC = () => {
 
   const handleContentChange = (val: string) => {
     if (!activeEntry) return;
+    lastLocalEditRef.current = Date.now();
+    latestDraftRef.current = val;
     setDraftContent(val);
     broadcastTyping(`journal:${activeEntry.id}`, val);
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    const targetId = activeEntry.id;
     saveTimerRef.current = window.setTimeout(() => {
-      updateJournalEntry(activeEntry.id, { content: val });
-    }, 450);
+      updateJournalEntry(targetId, { content: latestDraftRef.current });
+    }, 350);
   };
 
   const toggleTag = (tag: string) => {

@@ -45,36 +45,51 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     journalEntries.find((j) => j.title === 'Live Team Scratchpad') ?? null;
   const [scratchDraft, setScratchDraft] = useState(scratchpadEntry?.content ?? '');
   const scratchSaveRef = useRef<number | null>(null);
+  const scratchLastEditRef = useRef<number>(0);
+  const scratchLatestRef = useRef<string>(scratchpadEntry?.content ?? '');
+  const scratchCreatingRef = useRef<boolean>(false);
   const scratchTyping = liveTypingMap['team-scratchpad'];
 
   useEffect(() => {
-    if (scratchpadEntry && (!scratchTyping || scratchTyping.author === currentUser?.name)) {
+    const recentlyEdited = Date.now() - scratchLastEditRef.current < 1800;
+    if (
+      scratchpadEntry &&
+      !recentlyEdited &&
+      (!scratchTyping || scratchTyping.author === currentUser?.name)
+    ) {
       setScratchDraft(scratchpadEntry.content);
+      scratchLatestRef.current = scratchpadEntry.content;
     }
   }, [scratchpadEntry?.content, scratchTyping, currentUser?.name, scratchpadEntry]);
 
   useEffect(() => {
     if (scratchTyping && scratchTyping.author !== currentUser?.name) {
       setScratchDraft(scratchTyping.text);
+      scratchLatestRef.current = scratchTyping.text;
     }
   }, [scratchTyping, currentUser?.name]);
 
   const handleScratchChange = (val: string) => {
+    scratchLastEditRef.current = Date.now();
+    scratchLatestRef.current = val;
     setScratchDraft(val);
     broadcastTyping('team-scratchpad', val);
     if (scratchSaveRef.current) window.clearTimeout(scratchSaveRef.current);
     scratchSaveRef.current = window.setTimeout(async () => {
+      const latest = scratchLatestRef.current;
       if (scratchpadEntry) {
-        await updateJournalEntry(scratchpadEntry.id, { content: val });
-      } else if (val.trim()) {
+        await updateJournalEntry(scratchpadEntry.id, { content: latest });
+      } else if (latest.trim() && !scratchCreatingRef.current) {
+        scratchCreatingRef.current = true;
         await createJournalEntry({
           kind: 'Learning',
           title: 'Live Team Scratchpad',
-          content: val,
+          content: latest,
           tags: ['Team'],
         });
+        scratchCreatingRef.current = false;
       }
-    }, 450);
+    }, 350);
   };
 
   const myName = currentUser?.name ?? 'Hasan';

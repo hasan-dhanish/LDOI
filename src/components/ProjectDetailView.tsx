@@ -91,16 +91,25 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
   const notebookKey = `project-notebook:${projectId}`;
   const incomingTyping = liveTypingMap[notebookKey];
+  const lastNotebookEditRef = useRef<number>(0);
+  const latestNotebookRef = useRef<string>(project?.liveNotebookText ?? '');
 
   useEffect(() => {
-    if (project && (!incomingTyping || incomingTyping.author === currentUser?.name)) {
+    const recentlyEdited = Date.now() - lastNotebookEditRef.current < 1800;
+    if (
+      project &&
+      !recentlyEdited &&
+      (!incomingTyping || incomingTyping.author === currentUser?.name)
+    ) {
       setNotebookDraft(project.liveNotebookText);
+      latestNotebookRef.current = project.liveNotebookText;
     }
   }, [project?.liveNotebookText, incomingTyping, currentUser?.name, project]);
 
   useEffect(() => {
     if (incomingTyping && incomingTyping.author !== currentUser?.name) {
       setNotebookDraft(incomingTyping.text);
+      latestNotebookRef.current = incomingTyping.text;
     }
   }, [incomingTyping, currentUser?.name]);
 
@@ -139,12 +148,15 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const urgency = getDeadlineUrgency(project.deadline);
 
   const handleNotebookChange = (val: string) => {
+    lastNotebookEditRef.current = Date.now();
+    latestNotebookRef.current = val;
     setNotebookDraft(val);
     broadcastTyping(notebookKey, val);
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    const pid = project.id;
     saveTimerRef.current = window.setTimeout(() => {
-      updateProject(project.id, { liveNotebookText: val });
-    }, 450);
+      updateProject(pid, { liveNotebookText: latestNotebookRef.current });
+    }, 350);
   };
 
   const handleAddStep = async (e: React.FormEvent) => {
