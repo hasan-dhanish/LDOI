@@ -92,6 +92,41 @@
     0 12px 22px -6px rgba(0, 0, 0, 0.7);
 }
 
+/* Light & Dark Theme Squircle Folder Card */
+.folder-shell {
+  background-color: #faf8f3;
+  border-color: #cbc5b7;
+}
+.folder-flap-fill {
+  fill: #faf8f3;
+}
+.folder-flap-stroke {
+  stroke: rgba(140, 128, 110, 0.35);
+}
+.folder-title {
+  color: #18181b;
+}
+.folder-muted {
+  color: #636366;
+}
+
+.dark-theme .folder-shell {
+  background-color: #1f2024;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.dark-theme .folder-flap-fill {
+  fill: #222328;
+}
+.dark-theme .folder-flap-stroke {
+  stroke: rgba(255, 255, 255, 0.12);
+}
+.dark-theme .folder-title {
+  color: #ffffff;
+}
+.dark-theme .folder-muted {
+  color: #a1a1aa;
+}
+
 .dark-theme aside {
   background-color: rgba(26, 28, 35, 0.94) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;

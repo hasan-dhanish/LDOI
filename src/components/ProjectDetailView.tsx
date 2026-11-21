@@ -274,9 +274,10 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             type="button"
             onClick={handleDeleteProject}
             title="Delete Project"
-            className="p-2 rounded-md bg-white border border-[#E4E2DC] hover:border-[#DC2626] text-[#71717A] hover:text-[#DC2626]"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white border border-[#E4E2DC] hover:border-[#DC2626] text-xs font-medium text-[#71717A] hover:text-[#DC2626]"
           >
             <Trash2 className="w-3.5 h-3.5" />
+            Delete
           </button>
         </div>
       </div>
@@ -342,6 +343,26 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             <h3 className="text-xs font-semibold uppercase tracking-wider text-[#52525B]">
               Project Controls
             </h3>
+
+            <div>
+              <label className="block text-[11px] font-medium text-[#52525B] mb-1">Project Name</label>
+              <input
+                type="text"
+                value={project.title}
+                onChange={(e) => updateProject(project.id, { title: e.target.value })}
+                className="w-full px-2.5 py-2 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-md"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-[#52525B] mb-1">Client Name</label>
+              <input
+                type="text"
+                value={project.clientName}
+                onChange={(e) => updateProject(project.id, { clientName: e.target.value })}
+                className="w-full px-2.5 py-2 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-md"
+              />
+            </div>
 
             <div>
               <label className="block text-[11px] font-medium text-[#52525B] mb-1">Status</label>

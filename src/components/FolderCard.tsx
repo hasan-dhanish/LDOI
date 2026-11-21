@@ -36,7 +36,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
       onClick={onClick}
       className="ios-press group text-left w-full max-w-[220px] focus:outline-none"
     >
-      <div className="relative aspect-[1/0.94] w-full rounded-[20px] border-2 border-[#18181B] dark:border-white/15 overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.2)] transition-transform duration-150 group-hover:-translate-y-1 bg-[#1F2024]">
+      <div className="folder-shell relative aspect-[1/0.94] w-full rounded-[20px] border-2 overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.14)] transition-transform duration-150 group-hover:-translate-y-1">
         {/* Top Colored Backplate */}
         <div
           className="absolute inset-x-0 top-0 h-[44%] p-3 flex items-start justify-between"
@@ -50,8 +50,8 @@ export const FolderCard: React.FC<FolderCardProps> = ({
           </span>
         </div>
 
-        {/* Matte Dark Front Folder Flap with Angled Tab Shoulder */}
-        <div className="absolute inset-x-0 bottom-0 top-[24%] flex flex-col justify-between p-3 pt-4 text-white">
+        {/* Theme-Aware Front Folder Flap with Angled Tab Shoulder */}
+        <div className="absolute inset-x-0 bottom-0 top-[24%] flex flex-col justify-between p-3 pt-4">
           <svg
             viewBox="0 0 300 220"
             preserveAspectRatio="none"
@@ -59,23 +59,23 @@ export const FolderCard: React.FC<FolderCardProps> = ({
             aria-hidden="true"
           >
             <path
+              className="folder-flap-fill"
               d="M 0 18 Q 0 0 18 0 L 106 0 Q 120 0 128 12 L 136 24 Q 144 34 158 34 L 284 34 Q 300 34 300 50 L 300 220 L 0 220 Z"
-              fill="#222328"
             />
             <path
+              className="folder-flap-stroke"
               d="M 0 18 Q 0 0 18 0 L 106 0 Q 120 0 128 12 L 136 24 Q 144 34 158 34 L 284 34 Q 300 34 300 50"
               fill="none"
-              stroke="rgba(255,255,255,0.12)"
               strokeWidth="1.5"
             />
           </svg>
 
           {/* Folder Title & Client Subtitle */}
           <div className="relative z-10 pr-1 mt-0.5">
-            <h3 className="text-xs font-bold text-white truncate leading-snug">
+            <h3 className="folder-title text-xs font-bold truncate leading-snug">
               {project.title}
             </h3>
-            <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+            <p className="folder-muted text-[10px] truncate mt-0.5">
               {project.clientName} · {project.category}
             </p>
           </div>
@@ -97,10 +97,10 @@ export const FolderCard: React.FC<FolderCardProps> = ({
           {/* Bottom Stats Row */}
           <div className="relative z-10 flex items-end justify-between">
             <div className="flex items-baseline gap-1">
-              <span className="text-lg font-bold font-mono-num leading-none text-white">
+              <span className="folder-title text-lg font-bold font-mono-num leading-none">
                 {stepDisplay}
               </span>
-              <span className="text-[9px] font-medium text-zinc-400">
+              <span className="folder-muted text-[9px] font-medium">
                 Steps ({completedCount}/{taskCount})
               </span>
             </div>
@@ -109,15 +109,15 @@ export const FolderCard: React.FC<FolderCardProps> = ({
               <div
                 className={`text-[10px] font-mono-num font-semibold ${
                   urgency.tone === 'overdue'
-                    ? 'text-[#FCA5A5]'
+                    ? 'text-[#DC2626]'
                     : urgency.tone === 'today' || urgency.tone === 'soon'
-                    ? 'text-[#FCD34D]'
-                    : 'text-zinc-300'
+                    ? 'text-[#D97706]'
+                    : 'folder-muted'
                 }`}
               >
                 {urgency.label}
               </div>
-              <div className="text-[9px] font-mono-num text-zinc-500">
+              <div className="folder-muted text-[9px] font-mono-num opacity-80">
                 {docCount} {docCount === 1 ? 'doc' : 'docs'}
               </div>
             </div>
