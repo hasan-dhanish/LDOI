@@ -18,10 +18,14 @@ export const JournalView: React.FC = () => {
 
   const [kindFilter, setKindFilter] = useState<'All' | JournalKind>('All');
   const [selectedId, setSelectedId] = useState<string | null>(journalEntries[0]?.id ?? null);
+  const [draftTitle, setDraftTitle] = useState('');
   const [draftContent, setDraftContent] = useState('');
   const saveTimerRef = useRef<number | null>(null);
+  const titleSaveTimerRef = useRef<number | null>(null);
   const lastLocalEditRef = useRef<number>(0);
+  const lastTitleEditRef = useRef<number>(0);
   const latestDraftRef = useRef<string>('');
+  const latestTitleRef = useRef<string>('');
   const lastEntryIdRef = useRef<string | null>(null);
 
   const filtered = journalEntries.filter((e) =>
@@ -32,7 +36,9 @@ export const JournalView: React.FC = () => {
     journalEntries.find((e) => e.id === selectedId) ?? filtered[0] ?? null;
 
   const typingKey = activeEntry ? `journal:${activeEntry.id}` : '';
+  const titleTypingKey = activeEntry ? `journal-title:${activeEntry.id}` : '';
   const incomingTyping = typingKey ? liveTypingMap[typingKey] : undefined;
+  const incomingTitleTyping = titleTypingKey ? liveTypingMap[titleTypingKey] : undefined;
 
   useEffect(() => {
     if (!activeEntry) return;
@@ -40,16 +46,34 @@ export const JournalView: React.FC = () => {
     if (switchedEntry) {
       lastEntryIdRef.current = activeEntry.id;
       lastLocalEditRef.current = 0;
+      lastTitleEditRef.current = 0;
     }
-    const recentlyEdited = Date.now() - lastLocalEditRef.current < 1800;
+    const now = Date.now();
+    const recentlyEditedContent = now - lastLocalEditRef.current < 1800;
     if (
-      (switchedEntry || !recentlyEdited) &&
+      (switchedEntry || !recentlyEditedContent) &&
       (!incomingTyping || incomingTyping.author === currentUser?.name)
     ) {
       setDraftContent(activeEntry.content);
       latestDraftRef.current = activeEntry.content;
     }
-  }, [activeEntry?.id, activeEntry?.content, incomingTyping, currentUser?.name, activeEntry]);
+    const recentlyEditedTitle = now - lastTitleEditRef.current < 1800;
+    if (
+      (switchedEntry || !recentlyEditedTitle) &&
+      (!incomingTitleTyping || incomingTitleTyping.author === currentUser?.name)
+    ) {
+      setDraftTitle(activeEntry.title);
+      latestTitleRef.current = activeEntry.title;
+    }
+  }, [
+    activeEntry?.id,
+    activeEntry?.content,
+    activeEntry?.title,
+    incomingTyping,
+    incomingTitleTyping,
+    currentUser?.name,
+    activeEntry,
+  ]);
 
   useEffect(() => {
     if (incomingTyping && incomingTyping.author !== currentUser?.name) {
@@ -57,6 +81,13 @@ export const JournalView: React.FC = () => {
       latestDraftRef.current = incomingTyping.text;
     }
   }, [incomingTyping, currentUser?.name]);
+
+  useEffect(() => {
+    if (incomingTitleTyping && incomingTitleTyping.author !== currentUser?.name) {
+      setDraftTitle(incomingTitleTyping.text);
+      latestTitleRef.current = incomingTitleTyping.text;
+    }
+  }, [incomingTitleTyping, currentUser?.name]);
 
   const handleCreate = async (kind: JournalKind) => {
     const created = await createJournalEntry({
@@ -66,6 +97,19 @@ export const JournalView: React.FC = () => {
       tags: [],
     });
     setSelectedId(created.id);
+  };
+
+  const handleTitleChange = (val: string) => {
+    if (!activeEntry) return;
+    lastTitleEditRef.current = Date.now();
+    latestTitleRef.current = val;
+    setDraftTitle(val);
+    broadcastTyping(`journal-title:${activeEntry.id}`, val);
+    if (titleSaveTimerRef.current) window.clearTimeout(titleSaveTimerRef.current);
+    const targetId = activeEntry.id;
+    titleSaveTimerRef.current = window.setTimeout(() => {
+      updateJournalEntry(targetId, { title: latestTitleRef.current });
+    }, 350);
   };
 
   const handleContentChange = (val: string) => {
@@ -211,8 +255,8 @@ export const JournalView: React.FC = () => {
               <div className="flex items-start justify-between gap-3">
                 <input
                   type="text"
-                  value={activeEntry.title}
-                  onChange={(e) => updateJournalEntry(activeEntry.id, { title: e.target.value })}
+                  value={draftTitle}
+                  onChange={(e) => handleTitleChange(e.target.value)}
                   className="flex-1 text-lg font-semibold text-[#18181B] bg-transparent border-b border-transparent focus:border-[#0071E3] focus:outline-none pb-1"
                 />
                 <div className="flex items-center gap-2 shrink-0">
