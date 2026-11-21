@@ -215,9 +215,10 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   };
 
   return (
-    <div className="space-y-5">
-      {/* Top Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b border-[#E4E2DC]">
+    <div className="fixed inset-0 z-30 ios-desk-bg flex flex-col overflow-hidden">
+      {/* Compact Top Header + Tab Strip */}
+      <div className="px-4 sm:px-6 pt-3 pb-2.5 border-b border-[#E4E2DC] shrink-0 space-y-2.5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
         <div className="flex items-start gap-3">
           <button
             type="button"
@@ -284,7 +285,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
       </div>
 
       {/* Sub-navigation Tabs */}
-      <div className="flex flex-wrap gap-1.5 border-b border-[#E4E2DC] pb-3">
+      <div className="flex flex-wrap gap-1.5">
         {(
           [
             { id: 'pinboard', label: 'Pinboard Matrix' },
@@ -309,9 +310,15 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           </button>
         ))}
       </div>
+      </div>
 
-      {/* TAB 0: Interactive Pinboard Matrix */}
+      {/* TAB 0: Interactive Pinboard Matrix (Full-Screen Canvas) */}
       {tab === 'pinboard' && <ProjectPinboard project={project} />}
+
+      {/* Other Tabs (Scrollable Centered Layout) */}
+      {tab !== 'pinboard' && (
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+          <div className="max-w-6xl mx-auto space-y-5">
 
       {/* TAB 1: Overview & Requirements */}
       {tab === 'overview' && (
@@ -948,6 +955,9 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
           </div>
         </div>
       )}

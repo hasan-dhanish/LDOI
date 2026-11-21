@@ -187,9 +187,9 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   const cpDone = checkpoints.filter((c) => c.done).length;
 
   return (
-    <div className="space-y-3">
+    <div className="flex-1 flex flex-col min-h-0 relative">
       {/* Pinboard Matrix Toolbar */}
-      <div className="paper-card rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2">
+      <div className="px-4 sm:px-6 py-2 border-b border-[#E4E2DC] flex flex-wrap items-center justify-between gap-2 shrink-0">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -240,7 +240,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
       {showAddPage && (
         <form
           onSubmit={handleAddPinnedPage}
-          className="paper-card rounded-xl p-4 space-y-2.5 max-w-lg"
+          className="absolute top-14 left-4 sm:left-6 z-20 w-[min(420px,calc(100%-2rem))] paper-card rounded-xl p-4 space-y-2.5 shadow-xl"
         >
           <div className="text-xs font-semibold text-[#18181B]">Pin a New Page / Note</div>
           <input
@@ -276,10 +276,10 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         </form>
       )}
 
-      {/* Open Pannable Matrix Canvas */}
-      <div className="paper-card rounded-2xl overflow-auto h-[680px] relative">
+      {/* Open Pannable Full-Screen Matrix Canvas */}
+      <div className="flex-1 overflow-auto relative">
         <div
-          className="relative min-w-[1200px] min-h-[960px]"
+          className="relative min-w-[1600px] min-h-[1200px] w-full h-full"
           style={{
             backgroundImage:
               'radial-gradient(rgba(140, 128, 110, 0.25) 1px, transparent 1px)',
