@@ -41,14 +41,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { currentUser, onlineMembers, signOut } = useLdoi();
 
   return (
-    <aside className="no-print paper-card w-full md:w-68 md:my-3 md:ml-3 md:h-[calc(100vh-1.5rem)] md:rounded-2xl md:sticky md:top-3 shrink-0 flex flex-col justify-between overflow-hidden">
+    <aside
+      className={`no-print w-full md:w-64 md:my-4 md:ml-4 md:h-[calc(100vh-2rem)] md:sticky md:top-4 shrink-0 bg-white/70 backdrop-blur-2xl border-b md:border md:rounded-2xl flex flex-col justify-between overflow-hidden ${
+        darkMode
+          ? 'md:border-white/10 md:shadow-[0_20px_48px_rgba(0,0,0,0.45)]'
+          : 'border-white/60 md:border-[#E4E2DC] md:shadow-[0_18px_42px_rgba(24,24,27,0.10)]'
+      }`}
+    >
       <div>
         {/* Brand Header */}
-        <div
-          className={`p-4 border-b flex items-center justify-between gap-2 ${
-            darkMode ? 'border-white/10' : 'border-black/10'
-          }`}
-        >
+        <div className="p-4 border-b border-[#E2E0D8] flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <LdoiLogo size={36} />
             <div>
@@ -109,13 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         {/* Live Team Presence Widget */}
-        <div
-          className={`hidden md:block mx-3 mt-3 p-3.5 rounded-2xl border backdrop-blur-md ${
-            darkMode
-              ? 'bg-white/[0.05] border-white/12'
-              : 'bg-white/30 border-white/50'
-          }`}
-        >
+        <div className="hidden md:block mx-3 mt-3 p-3.5 rounded-2xl bg-[#F7F6F2] border border-[#E2E0D8]">
           <div className="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] mb-2.5">
             Team Online
           </div>
@@ -150,11 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer Profile Card */}
-      <div
-        className={`p-3 border-t ${
-          darkMode ? 'border-white/10' : 'border-black/10'
-        }`}
-      >
+      <div className="p-3 border-t border-[#E2E0D8]">
         <div className="flex items-center justify-between px-2 py-1.5">
           <div className="flex items-center gap-2 min-w-0">
             <span
