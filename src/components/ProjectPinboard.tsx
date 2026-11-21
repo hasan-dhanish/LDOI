@@ -6,6 +6,8 @@ import {
   FileText,
   GripHorizontal,
   Image as ImageIcon,
+  Maximize2,
+  Minus,
   Plus,
   RotateCcw,
   Square,
@@ -59,6 +61,10 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   const [positions, setPositions] = useState<BoardPositions>(() =>
     loadBoardPositions(project.id)
   );
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
     cardId: string;
     startX: number;
@@ -104,10 +110,10 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
     const onMove = (ev: PointerEvent) => {
       if (!dragRef.current) return;
-      const dx = ev.clientX - dragRef.current.startX;
-      const dy = ev.clientY - dragRef.current.startY;
-      const nx = Math.max(12, Math.round(dragRef.current.origX + dx));
-      const ny = Math.max(12, Math.round(dragRef.current.origY + dy));
+      const dx = (ev.clientX - dragRef.current.startX) / zoom;
+      const dy = (ev.clientY - dragRef.current.startY) / zoom;
+      const nx = Math.round(dragRef.current.origX + dx);
+      const ny = Math.round(dragRef.current.origY + dy);
       setPositions((prev) => {
         const next = { ...prev, [dragRef.current!.cardId]: { x: nx, y: ny } };
         saveBoardPositions(project.id, next);
@@ -182,6 +188,121 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   const handleResetLayout = () => {
     setPositions({});
     saveBoardPositions(project.id, {});
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const clampZoom = (z: number) => Math.min(2.5, Math.max(0.05, Number(z.toFixed(3))));
+
+  const zoomAtPoint = (nextZoomRaw: number, clientX: number, clientY: number) => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const cx = rect ? clientX - rect.left : clientX;
+    const cy = rect ? clientY - rect.top : clientY;
+    const nextZoom = clampZoom(nextZoomRaw);
+    setPan((prevPan) => {
+      const worldX = (cx - prevPan.x) / zoom;
+      const worldY = (cy - prevPan.y) / zoom;
+      return {
+        x: cx - worldX * nextZoom,
+        y: cy - worldY * nextZoom,
+      };
+    });
+    setZoom(nextZoom);
+  };
+
+  const zoomCentered = (nextZoomRaw: number) => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const cx = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+    const cy = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+    zoomAtPoint(nextZoomRaw, cx, cy);
+  };
+
+  const handleCanvasWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const factor = Math.exp(-e.deltaY * 0.0028);
+      zoomAtPoint(zoom * factor, e.clientX, e.clientY);
+      return;
+    }
+    setPan((prev) => ({
+      x: prev.x - (e.shiftKey ? e.deltaY : e.deltaX),
+      y: prev.y - (e.shiftKey ? 0 : e.deltaY),
+    }));
+  };
+
+  const startCanvasPan = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget && e.button !== 1) return;
+    e.preventDefault();
+    setIsPanning(true);
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const origPan = { ...pan };
+
+    const onMove = (ev: PointerEvent) => {
+      setPan({
+        x: origPan.x + (ev.clientX - startX),
+        y: origPan.y + (ev.clientY - startY),
+      });
+    };
+
+    const onUp = () => {
+      setIsPanning(false);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
+  // Virtual world bounds for the custom floating edge scrollbars
+  const WORLD_MIN = -3000;
+  const WORLD_MAX = 5000;
+  const WORLD_SPAN = WORLD_MAX - WORLD_MIN;
+  const vpW = typeof window !== 'undefined' ? window.innerWidth : 1280;
+  const vpH = typeof window !== 'undefined' ? window.innerHeight : 720;
+  const viewWorldX = -pan.x / zoom;
+  const viewWorldY = -pan.y / zoom;
+  const viewWorldW = vpW / zoom;
+  const viewWorldH = vpH / zoom;
+  const hThumbPct = Math.min(85, Math.max(8, (viewWorldW / WORLD_SPAN) * 100));
+  const vThumbPct = Math.min(85, Math.max(8, (viewWorldH / WORLD_SPAN) * 100));
+  const hLeftPct = Math.min(
+    100 - hThumbPct,
+    Math.max(0, ((viewWorldX - WORLD_MIN) / WORLD_SPAN) * 100)
+  );
+  const vTopPct = Math.min(
+    100 - vThumbPct,
+    Math.max(0, ((viewWorldY - WORLD_MIN) / WORLD_SPAN) * 100)
+  );
+
+  const startThumbDrag = (axis: 'x' | 'y', e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const track = e.currentTarget.parentElement;
+    if (!track) return;
+    const trackRect = track.getBoundingClientRect();
+    const startPos = axis === 'x' ? e.clientX : e.clientY;
+    const origPanVal = axis === 'x' ? pan.x : pan.y;
+    const trackLen = axis === 'x' ? trackRect.width : trackRect.height;
+
+    const onMove = (ev: PointerEvent) => {
+      const deltaPx = (axis === 'x' ? ev.clientX : ev.clientY) - startPos;
+      const worldDelta = (deltaPx / trackLen) * WORLD_SPAN;
+      setPan((prev) =>
+        axis === 'x'
+          ? { ...prev, x: origPanVal - worldDelta * zoom }
+          : { ...prev, y: origPanVal - worldDelta * zoom }
+      );
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   };
 
   const cpDone = checkpoints.filter((c) => c.done).length;
@@ -273,15 +394,96 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         </form>
       )}
 
-      {/* Open Pannable Full-Screen Matrix Canvas */}
-      <div className="flex-1 overflow-auto relative">
-        <div
-          className="relative min-w-[1600px] min-h-[1200px] w-full h-full"
-          style={{
-            backgroundImage:
-              'radial-gradient(rgba(140, 128, 110, 0.25) 1px, transparent 1px)',
-            backgroundSize: '20px 20px',
+      {/* Fixed Floating Zoom Pill (Bottom-Right) */}
+      <div className="fixed bottom-16 right-4 sm:bottom-5 sm:right-5 z-40 paper-card rounded-full px-2.5 py-1.5 shadow-2xl border border-[#E4E2DC] flex items-center gap-1.5 backdrop-blur-md">
+        <button
+          type="button"
+          onClick={() => zoomCentered(zoom * 0.72)}
+          title="Zoom Out"
+          className="ios-press p-1 rounded-full text-[#52525B] hover:text-[#18181B] hover:bg-black/5"
+        >
+          <Minus className="w-3.5 h-3.5" />
+        </button>
+        <input
+          type="range"
+          min={5}
+          max={250}
+          value={Math.round(zoom * 100)}
+          onChange={(e) => zoomCentered(Number(e.target.value) / 100)}
+          title="Zoom Level (5% - 250%)"
+          className="w-16 sm:w-20 accent-[#0A5386] cursor-pointer h-1"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setZoom(1);
+            setPan({ x: 0, y: 0 });
           }}
+          title="Reset to 100%"
+          className="px-1.5 py-0.5 text-[11px] font-mono-num font-semibold text-[#18181B] hover:bg-black/5 rounded-full min-w-[42px] text-center"
+        >
+          {Math.round(zoom * 100)}%
+        </button>
+        <button
+          type="button"
+          onClick={() => zoomCentered(zoom * 1.35)}
+          title="Zoom In"
+          className="ios-press p-1 rounded-full text-[#52525B] hover:text-[#18181B] hover:bg-black/5"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setZoom(0.28);
+            setPan({ x: 80, y: 80 });
+          }}
+          title="Bird's-Eye Overview"
+          className="ios-press p-1 rounded-full text-[#0A5386] hover:bg-[#0A5386]/10"
+        >
+          <Maximize2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Cool Floating Edge Scrollbars */}
+      <div className="fixed bottom-1.5 left-6 right-10 z-30 h-2 rounded-full bg-black/5 backdrop-blur-sm pointer-events-auto">
+        <div
+          onPointerDown={(e) => startThumbDrag('x', e)}
+          style={{ left: `${hLeftPct}%`, width: `${hThumbPct}%` }}
+          className="absolute top-0 bottom-0 rounded-full bg-gradient-to-r from-[#0A5386] to-[#133F47] opacity-75 hover:opacity-100 cursor-grab active:cursor-grabbing shadow-[0_0_10px_rgba(10,83,134,0.45)] transition-opacity"
+        />
+      </div>
+      <div className="fixed top-16 bottom-16 right-1.5 z-30 w-2 rounded-full bg-black/5 backdrop-blur-sm pointer-events-auto">
+        <div
+          onPointerDown={(e) => startThumbDrag('y', e)}
+          style={{ top: `${vTopPct}%`, height: `${vThumbPct}%` }}
+          className="absolute left-0 right-0 rounded-full bg-gradient-to-b from-[#0A5386] to-[#133F47] opacity-75 hover:opacity-100 cursor-grab active:cursor-grabbing shadow-[0_0_10px_rgba(10,83,134,0.45)] transition-opacity"
+        />
+      </div>
+
+      {/* True Infinite Pan & Zoom Matrix Canvas */}
+      <div
+        ref={viewportRef}
+        onWheel={handleCanvasWheel}
+        onPointerDown={startCanvasPan}
+        className={`flex-1 overflow-hidden relative select-none ${
+          isPanning ? 'cursor-grabbing' : 'cursor-grab'
+        }`}
+        style={{
+          backgroundImage: `radial-gradient(rgba(140, 128, 110, ${Math.min(
+            0.35,
+            Math.max(0.1, 0.28 * zoom)
+          )}) ${Math.max(0.75, 1.2 * Math.min(1, zoom))}px, transparent 1px)`,
+          backgroundSize: `${Math.max(6, 22 * zoom)}px ${Math.max(6, 22 * zoom)}px`,
+          backgroundPosition: `${pan.x}px ${pan.y}px`,
+        }}
+      >
+        <div
+          style={{
+            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+            transformOrigin: '0 0',
+          }}
+          className="absolute top-0 left-0 will-change-transform select-text"
         >
           {/* 1. Requirement Checkpoints Card */}
           <div

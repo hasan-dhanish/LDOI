@@ -273,6 +273,38 @@
   transform: scale(0.975);
 }
 
+/* Cool Ultra-Thin Glassmorphic Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(10, 83, 134, 0.38) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(10, 83, 134, 0.42), rgba(19, 63, 71, 0.52));
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #0A5386, #133F47);
+}
+
+.dark-theme * {
+  scrollbar-color: rgba(125, 211, 252, 0.35) transparent;
+}
+
+.dark-theme *::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(125, 211, 252, 0.35), rgba(45, 212, 191, 0.42));
+}
+
 /* Print stylesheet for Quotations & Project Proposals */
 @media print {
   body {
