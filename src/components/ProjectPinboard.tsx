@@ -188,59 +188,56 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
   return (
     <div className="flex-1 flex flex-col min-h-0 relative">
-      {/* Pinboard Matrix Toolbar */}
-      <div className="px-4 sm:px-6 py-2 border-b border-[#E4E2DC] flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowAddPage((v) => !v)}
-            className="ios-press inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0A5386] text-white rounded-lg"
-          >
-            <StickyNote className="w-3.5 h-3.5" />
-            Add Spec / Page
-          </button>
+      {/* Fixed Floating Pill Bar */}
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-2 py-1.5 shadow-2xl border border-[#E4E2DC] flex items-center gap-1.5 max-w-[95vw] overflow-x-auto backdrop-blur-md">
+        <button
+          type="button"
+          onClick={() => setShowAddPage((v) => !v)}
+          className="ios-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#0A5386] text-white rounded-full"
+        >
+          <StickyNote className="w-3.5 h-3.5" />
+          Add Spec / Page
+        </button>
 
-          <label className="ios-press inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#254454] text-white rounded-lg cursor-pointer">
-            <ImageIcon className="w-3.5 h-3.5" />
-            Pin Design Inspo
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => handleUploadInspoOrFile(e, 'Spec')}
-            />
-          </label>
+        <label className="ios-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#254454] text-white rounded-full cursor-pointer">
+          <ImageIcon className="w-3.5 h-3.5" />
+          Pin Design Inspo
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handleUploadInspoOrFile(e, 'Spec')}
+          />
+        </label>
 
-          <label className="ios-press inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-[#E4E2DC] text-[#18181B] rounded-lg cursor-pointer">
-            <Upload className="w-3.5 h-3.5" />
-            Pin File (PDF / Excel / Doc)
-            <input
-              type="file"
-              className="hidden"
-              onChange={(e) => handleUploadInspoOrFile(e, 'Other')}
-            />
-          </label>
-        </div>
+        <label className="ios-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-white/80 border border-[#E4E2DC] text-[#18181B] rounded-full cursor-pointer">
+          <Upload className="w-3.5 h-3.5" />
+          Pin File
+          <input
+            type="file"
+            className="hidden"
+            onChange={(e) => handleUploadInspoOrFile(e, 'Other')}
+          />
+        </label>
 
-        <div className="flex items-center gap-3">
-          <span className="text-[11px] text-[#71717A] hidden sm:inline">
-            Drag any card header to arrange on the matrix
-          </span>
-          <button
-            type="button"
-            onClick={handleResetLayout}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium bg-white border border-[#E4E2DC] rounded-lg text-[#52525B] hover:text-[#18181B]"
-          >
-            <RotateCcw className="w-3 h-3" /> Reset Layout
-          </button>
-        </div>
+        <div className="w-px h-5 bg-[#E4E2DC] mx-0.5 shrink-0" />
+
+        <button
+          type="button"
+          onClick={handleResetLayout}
+          title="Reset Layout"
+          className="ios-press shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-[#52525B] hover:text-[#18181B] rounded-full"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Reset</span>
+        </button>
       </div>
 
-      {/* Inline Add Page Drawer */}
+      {/* Floating Add Page Drawer */}
       {showAddPage && (
         <form
           onSubmit={handleAddPinnedPage}
-          className="absolute top-14 left-4 sm:left-6 z-20 w-[min(420px,calc(100%-2rem))] paper-card rounded-xl p-4 space-y-2.5 shadow-xl"
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 w-[min(420px,calc(100vw-2rem))] paper-card rounded-2xl p-4 space-y-2.5 shadow-2xl"
         >
           <div className="text-xs font-semibold text-[#18181B]">Pin a New Page / Note</div>
           <input
