@@ -66,7 +66,7 @@ const FloatingPagePin: React.FC<{
   return (
     <div
       style={{ left: pos.x, top: pos.y }}
-      className="group absolute w-[280px] p-2 select-none"
+      className="group absolute w-[280px] floating-sheet rounded-xl p-4 select-none"
     >
       <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2 right-0 z-10 flex items-center gap-1">
         <div
@@ -107,7 +107,7 @@ const FloatingPagePin: React.FC<{
           scheduleSave(heading, e.target.value);
         }}
         placeholder="Write notes..."
-        className="mt-1 w-full text-xs text-[#3F3F46] leading-relaxed bg-transparent focus:outline-none resize-y placeholder:text-[#A1A1AA]"
+        className="mt-1.5 w-full text-xs text-[#3F3F46] leading-relaxed bg-transparent focus:outline-none resize-none placeholder:text-[#A1A1AA]"
       />
     </div>
   );
@@ -136,7 +136,7 @@ const FloatingChecklistPin: React.FC<{
   return (
     <div
       style={{ left: pos.x, top: pos.y }}
-      className="group absolute w-[270px] p-2 select-none"
+      className="group absolute w-[270px] floating-sheet rounded-xl p-4 select-none"
     >
       <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2 right-0 z-10 flex items-center gap-1">
         <div
