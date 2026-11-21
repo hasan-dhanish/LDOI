@@ -403,7 +403,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         </button>
       </div>
 
-      {/* True Infinite Pan & Zoom Matrix Canvas (Clean Background, No Scrollbars) */}
+      {/* True Infinite Pan & Zoom Matrix Canvas (Dotted Matrix, No Scrollbars) */}
       <div
         ref={viewportRef}
         onWheel={handleCanvasWheel}
@@ -411,6 +411,14 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         className={`flex-1 overflow-hidden relative select-none ${
           isPanning ? 'cursor-grabbing' : 'cursor-grab'
         }`}
+        style={{
+          backgroundImage: `radial-gradient(rgba(140, 128, 110, ${Math.min(
+            0.35,
+            Math.max(0.12, 0.28 * zoom)
+          )}) ${Math.max(0.75, 1.2 * Math.min(1, zoom))}px, transparent 1px)`,
+          backgroundSize: `${Math.max(6, 22 * zoom)}px ${Math.max(6, 22 * zoom)}px`,
+          backgroundPosition: `${pan.x}px ${pan.y}px`,
+        }}
       >
         <div
           style={{
