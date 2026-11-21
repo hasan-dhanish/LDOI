@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, FolderPlus, Plus, Search, Trash2, X } from 'lucide-react';
 import { MEMBER_NAMES, PROJECT_CATEGORIES } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
+import { serializeRequirementCheckpoints, type RequirementCheckpoint } from '../lib/pinboard';
 import type { MemberName, ProjectCategory, ProjectStatus } from '../types';
 import { FolderCard } from './FolderCard';
 
@@ -38,7 +39,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
   const [category, setCategory] = useState<ProjectCategory>('ERP');
   const [deadline, setDeadline] = useState('');
   const [quotedAmountInr, setQuotedAmountInr] = useState('');
-  const [requirements, setRequirements] = useState('');
+  const [checkpoints, setCheckpoints] = useState<RequirementCheckpoint[]>([]);
+  const [newCheckpointText, setNewCheckpointText] = useState('');
   const [teamIdea, setTeamIdea] = useState('');
   const [draftSteps, setDraftSteps] = useState<DraftStep[]>([]);
   const [newStepTitle, setNewStepTitle] = useState('');
@@ -65,7 +67,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
     setCategory('ERP');
     setDeadline('');
     setQuotedAmountInr('');
-    setRequirements('');
+    setCheckpoints([]);
+    setNewCheckpointText('');
     setTeamIdea('');
     setDraftSteps([]);
     setNewStepTitle('');
@@ -85,6 +88,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
     ]);
     setNewStepTitle('');
     setNewStepDueDate('');
+  };
+
+  const handleAddCheckpoint = () => {
+    const clean = newCheckpointText.trim();
+    if (!clean) return;
+    setCheckpoints((prev) => [
+      ...prev,
+      { id: `cp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, text: clean, done: false },
+    ]);
+    setNewCheckpointText('');
   };
 
   const handleLoadTemplate = () => {
@@ -107,7 +120,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
       clientName: clientName.trim(),
       category,
       status: 'Planning',
-      requirements: requirements.trim(),
+      requirements: serializeRequirementCheckpoints(checkpoints),
       teamIdea: teamIdea.trim(),
       deadline,
       quotedAmountInr: Number(quotedAmountInr) || 0,
@@ -346,24 +359,66 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
               {wizardStep === 2 && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
-                      1. Client Requirements (What the client needs)
+                    <label className="block text-[11px] font-semibold text-[#52525B] mb-1.5">
+                      1. Client Requirement Checkpoints (Tick these off as you build)
                     </label>
-                    <textarea
-                      rows={4}
-                      value={requirements}
-                      onChange={(e) => setRequirements(e.target.value)}
-                      placeholder="List every feature, module, or hardware integration the client asked for..."
-                      className="w-full px-3 py-2 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
-                    />
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={newCheckpointText}
+                        onChange={(e) => setNewCheckpointText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCheckpoint();
+                          }
+                        }}
+                        placeholder="e.g. Barcode scanner billing, GST invoice PDF..."
+                        className="flex-1 px-3 py-1.5 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCheckpoint}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-[#0A5386] text-white rounded-lg"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Add
+                      </button>
+                    </div>
+                    <div className="max-h-28 overflow-y-auto space-y-1.5">
+                      {checkpoints.length === 0 ? (
+                        <div className="py-3 text-center text-[11px] text-[#71717A] border border-dashed border-[#E4E2DC] rounded-lg">
+                          Add each client requirement as a checkpoint above.
+                        </div>
+                      ) : (
+                        checkpoints.map((cp, idx) => (
+                          <div
+                            key={cp.id}
+                            className="flex items-center justify-between px-3 py-1.5 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
+                          >
+                            <span className="truncate font-medium text-[#18181B]">
+                              {idx + 1}. {cp.text}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCheckpoints((prev) => prev.filter((item) => item.id !== cp.id))
+                              }
+                              className="text-[#71717A] hover:text-[#DC2626]"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-semibold text-[#52525B] mb-1">
-                      2. Our Team Idea &amp; Approach (How we will build it)
+                      2. Our Team Idea &amp; Approach (Spec / Plan)
                     </label>
                     <textarea
-                      rows={4}
+                      rows={3}
                       value={teamIdea}
                       onChange={(e) => setTeamIdea(e.target.value)}
                       placeholder="Tech stack, architecture, pricing idea, or hardware notes..."

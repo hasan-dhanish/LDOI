@@ -28,6 +28,7 @@ import type {
   ProjectStatus,
   QuotationDoc,
 } from '../types';
+import { ProjectPinboard } from './ProjectPinboard';
 import { QuotationBuilderModal } from './QuotationBuilderModal';
 
 interface ProjectDetailViewProps {
@@ -35,7 +36,7 @@ interface ProjectDetailViewProps {
   onBack: () => void;
 }
 
-type DetailTab = 'overview' | 'workflow' | 'notebook' | 'budget' | 'docs';
+type DetailTab = 'pinboard' | 'overview' | 'workflow' | 'notebook' | 'budget' | 'docs';
 
 export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   projectId,
@@ -65,7 +66,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   } = useLdoi();
 
   const project = projects.find((p) => p.id === projectId);
-  const [tab, setTab] = useState<DetailTab>('overview');
+  const [tab, setTab] = useState<DetailTab>('pinboard');
 
   // Workflow form
   const [stepTitle, setStepTitle] = useState('');
@@ -286,7 +287,8 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
       <div className="flex flex-wrap gap-1.5 border-b border-[#E4E2DC] pb-3">
         {(
           [
-            { id: 'overview', label: 'Requirements & Idea' },
+            { id: 'pinboard', label: 'Pinboard Matrix' },
+            { id: 'overview', label: 'Project Controls' },
             { id: 'workflow', label: `Workflow (${completedSteps}/${steps.length})` },
             { id: 'notebook', label: 'Live Notebook & Discussion' },
             { id: 'budget', label: 'Budget (INR)' },
@@ -299,7 +301,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             onClick={() => setTab(t.id)}
             className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
               tab === t.id
-                ? 'bg-[#18181B] text-white border-[#18181B]'
+                ? 'bg-[#0A5386] text-white border-[#0A5386]'
                 : 'bg-white text-[#52525B] border-[#E4E2DC] hover:text-[#18181B]'
             }`}
           >
@@ -307,6 +309,9 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           </button>
         ))}
       </div>
+
+      {/* TAB 0: Interactive Pinboard Matrix */}
+      {tab === 'pinboard' && <ProjectPinboard project={project} />}
 
       {/* TAB 1: Overview & Requirements */}
       {tab === 'overview' && (
