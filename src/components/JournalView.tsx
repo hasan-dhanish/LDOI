@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, BookOpen, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, Plus, Search, Trash2, X } from 'lucide-react';
 import { JOURNAL_TAGS, formatDateShort } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
 import type { JournalEntry, JournalKind } from '../types';
@@ -9,6 +9,11 @@ const BOOK_COLORS = ['#0A5386', '#254454', '#133F47', '#8B1E1E', '#1B5E5A', '#2F
 function getEntryBookName(entry: JournalEntry): string {
   const bookTag = entry.tags.find((t) => t.startsWith('book:'));
   return bookTag ? bookTag.slice(5) : 'Notes';
+}
+
+function getEntryBookColor(entry: JournalEntry): string | null {
+  const colorTag = entry.tags.find((t) => t.startsWith('color:'));
+  return colorTag ? colorTag.slice(6) : null;
 }
 
 export const JournalView: React.FC = () => {
@@ -25,8 +30,12 @@ export const JournalView: React.FC = () => {
 
   const [openBookName, setOpenBookName] = useState<string | null>(null);
   const [bookSearch, setBookSearch] = useState('');
+  const [showNewBookModal, setShowNewBookModal] = useState(false);
   const [newBookInput, setNewBookInput] = useState('');
-  const [customBooks, setCustomBooks] = useState<string[]>([]);
+  const [newBookColor, setNewBookColor] = useState(BOOK_COLORS[0]);
+  const [newBookKind, setNewBookKind] = useState<JournalKind>('Idea');
+  const [newBookFirstPage, setNewBookFirstPage] = useState('');
+  const [customBooks, setCustomBooks] = useState<{ name: string; color: string }[]>([]);
 
   const [kindFilter, setKindFilter] = useState<'All' | JournalKind>('All');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -46,19 +55,22 @@ export const JournalView: React.FC = () => {
     let idx = 0;
     for (const entry of journalEntries) {
       const bName = getEntryBookName(entry);
+      const taggedColor = getEntryBookColor(entry);
       if (!map.has(bName)) {
         map.set(bName, {
           name: bName,
-          color: BOOK_COLORS[idx % BOOK_COLORS.length],
+          color: taggedColor ?? BOOK_COLORS[idx % BOOK_COLORS.length],
         });
         idx++;
+      } else if (taggedColor) {
+        map.get(bName)!.color = taggedColor;
       }
     }
-    for (const bName of customBooks) {
-      if (!map.has(bName)) {
-        map.set(bName, {
-          name: bName,
-          color: BOOK_COLORS[idx % BOOK_COLORS.length],
+    for (const cb of customBooks) {
+      if (!map.has(cb.name)) {
+        map.set(cb.name, {
+          name: cb.name,
+          color: cb.color,
         });
         idx++;
       }
@@ -136,16 +148,33 @@ export const JournalView: React.FC = () => {
     e.preventDefault();
     const clean = newBookInput.trim();
     if (!clean) return;
-    setCustomBooks((prev) => (prev.includes(clean) ? prev : [...prev, clean]));
+    setCustomBooks((prev) =>
+      prev.some((b) => b.name === clean) ? prev : [...prev, { name: clean, color: newBookColor }]
+    );
+    setShowNewBookModal(false);
     setNewBookInput('');
     setOpenBookName(clean);
     const created = await createJournalEntry({
-      kind: 'Idea',
-      title: 'Page 1',
+      kind: newBookKind,
+      title: newBookFirstPage.trim() || 'Page 1',
       content: '',
-      tags: [`book:${clean}`],
+      tags: [`book:${clean}`, `color:${newBookColor}`],
     });
+    setNewBookFirstPage('');
     setSelectedId(created.id);
+  };
+
+  const handleDeleteBook = async (bookName: string, pageIds: string[]) => {
+    const label = pageIds.length === 1 ? '1 page' : `${pageIds.length} pages`;
+    if (!window.confirm(`Delete "${bookName}" and its ${label} from the shelf?`)) return;
+    for (const id of pageIds) {
+      await deleteJournalEntry(id);
+    }
+    setCustomBooks((prev) => prev.filter((b) => b.name !== bookName));
+    if (openBookName === bookName) {
+      setOpenBookName(null);
+      setSelectedId(null);
+    }
   };
 
   const handleCreatePage = async (kind: JournalKind) => {
@@ -233,28 +262,26 @@ export const JournalView: React.FC = () => {
               />
             </div>
 
-            <form onSubmit={handleCreateBook} className="flex items-center gap-1.5">
-              <input
-                type="text"
-                value={newBookInput}
-                onChange={(e) => setNewBookInput(e.target.value)}
-                placeholder="New book name..."
-                className="px-3 py-1.5 text-xs bg-white border border-[#E4E2DC] rounded-lg focus:outline-none focus:border-[#0A5386] w-36"
-              />
-              <button
-                type="submit"
-                className="ios-press inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-[#0A5386] hover:bg-[#0C64A1] text-white rounded-lg shrink-0"
-              >
-                <Plus className="w-3.5 h-3.5" /> New Book
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={() => {
+                setNewBookInput('');
+                setNewBookFirstPage('');
+                setNewBookColor(BOOK_COLORS[books.length % BOOK_COLORS.length]);
+                setNewBookKind('Idea');
+                setShowNewBookModal(true);
+              }}
+              className="ios-press inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#0A5386] hover:bg-[#0C64A1] text-white rounded-lg shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" /> New Book
+            </button>
           </div>
         </div>
 
         {shelfRows.length === 0 ? (
           <div className="pt-8">
             <div className="py-12 text-center text-xs text-[#71717A]">
-              No books on the shelf yet. Enter a book name above and click <strong>New Book</strong>.
+              No books on the shelf yet. Click <strong>New Book</strong> to create your first notebook.
             </div>
             <div className="book-shelf-ledge w-full" />
           </div>
@@ -266,63 +293,225 @@ export const JournalView: React.FC = () => {
                   {rowBooks.map((book) => {
                     const pages = journalEntries.filter((e) => getEntryBookName(e) === book.name);
                     return (
-                      <button
-                        key={book.name}
-                        type="button"
-                        onClick={() => {
-                          setOpenBookName(book.name);
-                          setSelectedId(pages[0]?.id ?? null);
-                        }}
-                        className="ios-press group relative text-left focus:outline-none"
-                      >
-                        <div className="absolute -bottom-1 inset-x-1 h-2.5 bg-black/45 blur-[4px] rounded-full transition-all duration-200 group-hover:scale-x-90 group-hover:opacity-60" />
-
-                        <div
-                          className="relative w-32 sm:w-36 h-44 rounded-r-lg rounded-l-[3px] p-3.5 flex flex-col justify-between text-white shadow-[4px_8px_18px_rgba(0,0,0,0.38)] overflow-hidden transition-transform duration-200 group-hover:-translate-y-2"
-                          style={{ backgroundColor: book.color }}
+                      <div key={book.name} className="group relative">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteBook(
+                              book.name,
+                              pages.map((p) => p.id)
+                            );
+                          }}
+                          title={`Delete ${book.name}`}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2.5 -right-2.5 z-20 w-7 h-7 rounded-full bg-[#18181B]/90 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-lg"
                         >
-                          <div
-                            className="absolute inset-0 pointer-events-none"
-                            style={{
-                              background:
-                                'linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.02) 45%, rgba(0,0,0,0.28) 100%)',
-                            }}
-                          />
-                          <div
-                            className="absolute inset-y-0 left-0 w-3.5 pointer-events-none"
-                            style={{
-                              background:
-                                'linear-gradient(90deg, rgba(0,0,0,0.45) 0%, rgba(255,255,255,0.18) 38%, rgba(0,0,0,0.12) 78%, rgba(0,0,0,0.5) 100%)',
-                            }}
-                          />
-                          <div className="absolute inset-y-0 left-3.5 w-[1px] bg-white/18 pointer-events-none" />
-                          <div className="absolute inset-y-2.5 left-5 right-3 rounded-sm border border-white/12 pointer-events-none" />
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenBookName(book.name);
+                            setSelectedId(pages[0]?.id ?? null);
+                          }}
+                          className="ios-press relative text-left focus:outline-none block"
+                        >
+                          <div className="absolute -bottom-1 inset-x-1 h-2.5 bg-black/45 blur-[4px] rounded-full transition-all duration-200 group-hover:scale-x-90 group-hover:opacity-60" />
 
                           <div
-                            className="absolute top-0 right-4 w-3 h-7 bg-[#8B1E1E] shadow-[0_2px_4px_rgba(0,0,0,0.35)] pointer-events-none"
-                            style={{
-                              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%)',
-                            }}
-                          />
+                            className="relative w-32 sm:w-36 h-44 rounded-r-lg rounded-l-[3px] p-3.5 flex flex-col justify-between text-white shadow-[4px_8px_18px_rgba(0,0,0,0.38)] overflow-hidden transition-transform duration-200 group-hover:-translate-y-2"
+                            style={{ backgroundColor: book.color }}
+                          >
+                            <div
+                              className="absolute inset-0 pointer-events-none"
+                              style={{
+                                background:
+                                  'linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.02) 45%, rgba(0,0,0,0.28) 100%)',
+                              }}
+                            />
+                            <div
+                              className="absolute inset-y-0 left-0 w-3.5 pointer-events-none"
+                              style={{
+                                background:
+                                  'linear-gradient(90deg, rgba(0,0,0,0.45) 0%, rgba(255,255,255,0.18) 38%, rgba(0,0,0,0.12) 78%, rgba(0,0,0,0.5) 100%)',
+                              }}
+                            />
+                            <div className="absolute inset-y-0 left-3.5 w-[1px] bg-white/18 pointer-events-none" />
+                            <div className="absolute inset-y-2.5 left-5 right-3 rounded-sm border border-white/12 pointer-events-none" />
 
-                          <div className="relative z-10 pl-3.5 pr-2 pt-3">
-                            <h3 className="text-sm font-bold leading-snug text-white drop-shadow-2xs line-clamp-3">
-                              {book.name}
-                            </h3>
+                            <div
+                              className="absolute top-0 right-4 w-3 h-7 bg-[#8B1E1E] shadow-[0_2px_4px_rgba(0,0,0,0.35)] pointer-events-none"
+                              style={{
+                                clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%)',
+                              }}
+                            />
+
+                            <div className="relative z-10 pl-3.5 pr-2 pt-3">
+                              <h3 className="text-sm font-bold leading-snug text-white drop-shadow-2xs line-clamp-3">
+                                {book.name}
+                              </h3>
+                            </div>
+
+                            <div className="relative z-10 pl-3.5 pr-1 flex items-center justify-between text-[10px] font-mono-num text-white/85 pt-1.5 border-t border-white/15">
+                              <span>{pages.length} {pages.length === 1 ? 'pg' : 'pgs'}</span>
+                              <BookOpen className="w-3 h-3 opacity-80" />
+                            </div>
                           </div>
-
-                          <div className="relative z-10 pl-3.5 pr-1 flex items-center justify-between text-[10px] font-mono-num text-white/85 pt-1.5 border-t border-white/15">
-                            <span>{pages.length} {pages.length === 1 ? 'pg' : 'pgs'}</span>
-                            <BookOpen className="w-3 h-3 opacity-80" />
-                          </div>
-                        </div>
-                      </button>
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
                 <div className="book-shelf-ledge w-full relative z-10" />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Upgraded Add Book Modal with Live 3D Cover Preview */}
+        {showNewBookModal && (
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+            <form
+              onSubmit={handleCreateBook}
+              className="w-full max-w-lg paper-card rounded-2xl overflow-hidden shadow-2xl"
+            >
+              <div className="px-5 py-4 border-b border-[#E4E2DC] flex items-center justify-between">
+                <div className="text-sm font-semibold text-[#18181B]">Create New Book</div>
+                <button
+                  type="button"
+                  onClick={() => setShowNewBookModal(false)}
+                  className="p-1 text-[#71717A] hover:text-[#18181B]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-5 grid sm:grid-cols-12 gap-5 items-center">
+                {/* Live 3D Hardcover Preview */}
+                <div className="sm:col-span-5 flex flex-col items-center justify-center py-2">
+                  <div
+                    className="relative w-32 h-44 rounded-r-lg rounded-l-[3px] p-3.5 flex flex-col justify-between text-white shadow-[4px_10px_22px_rgba(0,0,0,0.35)] overflow-hidden transition-colors duration-200"
+                    style={{ backgroundColor: newBookColor }}
+                  >
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background:
+                          'linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.02) 45%, rgba(0,0,0,0.28) 100%)',
+                      }}
+                    />
+                    <div
+                      className="absolute inset-y-0 left-0 w-3.5 pointer-events-none"
+                      style={{
+                        background:
+                          'linear-gradient(90deg, rgba(0,0,0,0.45) 0%, rgba(255,255,255,0.18) 38%, rgba(0,0,0,0.12) 78%, rgba(0,0,0,0.5) 100%)',
+                      }}
+                    />
+                    <div className="absolute inset-y-0 left-3.5 w-[1px] bg-white/18 pointer-events-none" />
+                    <div className="absolute inset-y-2.5 left-5 right-3 rounded-sm border border-white/12 pointer-events-none" />
+                    <div
+                      className="absolute top-0 right-4 w-3 h-7 bg-[#8B1E1E] shadow-[0_2px_4px_rgba(0,0,0,0.35)] pointer-events-none"
+                      style={{
+                        clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%)',
+                      }}
+                    />
+                    <div className="relative z-10 pl-3.5 pr-2 pt-3">
+                      <div className="text-sm font-bold leading-snug text-white line-clamp-3">
+                        {newBookInput.trim() || 'Book Title'}
+                      </div>
+                    </div>
+                    <div className="relative z-10 pl-3.5 pr-1 flex items-center justify-between text-[10px] font-mono-num text-white/85 pt-1.5 border-t border-white/15">
+                      <span>1 pg</span>
+                      <BookOpen className="w-3 h-3 opacity-80" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Controls */}
+                <div className="sm:col-span-7 space-y-3.5">
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#52525B] mb-1">
+                      Book Title *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      autoFocus
+                      value={newBookInput}
+                      onChange={(e) => setNewBookInput(e.target.value)}
+                      placeholder="e.g. Hardware & R&D"
+                      className="w-full px-3 py-2 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#52525B] mb-1.5">
+                      Cover Color
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {BOOK_COLORS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setNewBookColor(c)}
+                          style={{ backgroundColor: c }}
+                          className={`w-7 h-7 rounded-full flex items-center justify-center text-white transition-transform ${
+                            newBookColor === c ? 'scale-110 ring-2 ring-offset-2 ring-[#0A5386]' : 'opacity-80 hover:opacity-100'
+                          }`}
+                        >
+                          {newBookColor === c && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#52525B] mb-1">
+                        First Page
+                      </label>
+                      <input
+                        type="text"
+                        value={newBookFirstPage}
+                        onChange={(e) => setNewBookFirstPage(e.target.value)}
+                        placeholder="Page 1"
+                        className="w-full px-2.5 py-1.5 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#52525B] mb-1">
+                        Type
+                      </label>
+                      <select
+                        value={newBookKind}
+                        onChange={(e) => setNewBookKind(e.target.value as JournalKind)}
+                        className="w-full px-2.5 py-1.5 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
+                      >
+                        <option value="Idea">Idea</option>
+                        <option value="Learning">Learning</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-5 py-3.5 border-t border-[#E4E2DC] flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewBookModal(false)}
+                  className="px-3.5 py-2 text-xs font-medium text-[#52525B] hover:text-[#18181B]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="ios-press px-4 py-2 text-xs font-semibold bg-[#0A5386] hover:bg-[#0C64A1] text-white rounded-lg"
+                >
+                  Add to Shelf
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </div>
