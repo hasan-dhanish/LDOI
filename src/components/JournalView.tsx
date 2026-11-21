@@ -246,24 +246,60 @@ export const JournalView: React.FC = () => {
                       setOpenBookName(book.name);
                       setSelectedId(pages[0]?.id ?? null);
                     }}
-                    className="ios-press group text-left focus:outline-none"
+                    className="ios-press group relative text-left focus:outline-none"
                   >
+                    {/* Contact shadow resting on the shelf */}
+                    <div className="absolute -bottom-1 inset-x-1 h-2.5 bg-black/45 blur-[4px] rounded-full transition-all duration-200 group-hover:scale-x-90 group-hover:opacity-60" />
+
                     <div
-                      className="relative w-32 sm:w-36 h-44 rounded-r-lg rounded-l-[3px] p-3.5 flex flex-col justify-between text-white shadow-[3px_6px_14px_rgba(0,0,0,0.32)] border border-white/15 overflow-hidden transition-transform duration-150 group-hover:-translate-y-1.5"
+                      className="relative w-32 sm:w-36 h-46 rounded-r-lg rounded-l-[3px] p-3.5 flex flex-col justify-between text-white shadow-[4px_8px_18px_rgba(0,0,0,0.38)] overflow-hidden transition-transform duration-200 group-hover:-translate-y-2"
                       style={{ backgroundColor: book.color }}
                     >
-                      {/* Realistic Spine Crease */}
-                      <div className="absolute inset-y-0 left-0 w-3 bg-black/25 border-r border-white/15" />
-                      {/* Right Page Stack Edge */}
-                      <div className="absolute inset-y-1.5 right-0 w-1 bg-[#F5F2EA] opacity-85" />
-                      {/* Bookmark Ribbon */}
-                      <div className="absolute top-0 right-3.5 w-2.5 h-6 bg-[#8B1E1E] border-x border-white/20" />
+                      {/* Studio Cover Sheen & Vignette */}
+                      <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          background:
+                            'linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.02) 45%, rgba(0,0,0,0.28) 100%)',
+                        }}
+                      />
 
-                      <div className="pl-2.5 pt-1">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-white/70">
+                      {/* Realistic 3D Curved Spine + Hinge Groove */}
+                      <div
+                        className="absolute inset-y-0 left-0 w-3.5 pointer-events-none"
+                        style={{
+                          background:
+                            'linear-gradient(90deg, rgba(0,0,0,0.45) 0%, rgba(255,255,255,0.18) 38%, rgba(0,0,0,0.12) 78%, rgba(0,0,0,0.5) 100%)',
+                        }}
+                      />
+                      <div className="absolute inset-y-0 left-3.5 w-[1px] bg-white/18 pointer-events-none" />
+
+                      {/* Subtle Debossed Cover Frame */}
+                      <div className="absolute inset-y-2.5 left-5 right-3 rounded-sm border border-white/12 pointer-events-none" />
+
+                      {/* Realistic Layered Page Stack Edge on Right */}
+                      <div
+                        className="absolute inset-y-1.5 right-0 w-1.5 rounded-l-[1px] shadow-[inset_1px_0_2px_rgba(0,0,0,0.25)] pointer-events-none"
+                        style={{
+                          backgroundColor: '#EFECE4',
+                          backgroundImage:
+                            'repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,0,0,0.10) 3px)',
+                        }}
+                      />
+
+                      {/* V-Notched Bookmark Ribbon */}
+                      <div
+                        className="absolute top-0 right-4 w-3 h-7 bg-[#8B1E1E] shadow-[0_2px_4px_rgba(0,0,0,0.35)] pointer-events-none"
+                        style={{
+                          clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%)',
+                        }}
+                      />
+
+                      <div className="relative z-10 pl-3.5 pr-1 pt-1.5">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-white/65">
                           LDOI Book
                         </span>
-                        <h3 className="mt-1 text-xs font-bold leading-snug text-white line-clamp-2">
+                        <h3 className="mt-1 text-xs font-bold leading-snug text-white drop-shadow-2xs line-clamp-2">
                           {book.name}
                         </h3>
                         <p className="mt-1 text-[10px] text-white/75 line-clamp-2 leading-tight">
@@ -271,8 +307,8 @@ export const JournalView: React.FC = () => {
                         </p>
                       </div>
 
-                      <div className="pl-2.5 flex items-center justify-between text-[10px] font-mono-num text-white/85 pt-1.5 border-t border-white/15">
-                        <span>{pages.length}p</span>
+                      <div className="relative z-10 pl-3.5 pr-1 flex items-center justify-between text-[10px] font-mono-num text-white/85 pt-1.5 border-t border-white/15">
+                        <span>{pages.length} {pages.length === 1 ? 'pg' : 'pgs'}</span>
                         <BookOpen className="w-3 h-3 opacity-80" />
                       </div>
                     </div>
