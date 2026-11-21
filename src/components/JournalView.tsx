@@ -3,6 +3,7 @@ import { ArrowLeft, BookOpen, Check, Plus, Search, Trash2, X } from 'lucide-reac
 import { JOURNAL_TAGS, formatDateShort } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
 import type { JournalEntry, JournalKind } from '../types';
+import { ConfirmModal } from './ConfirmModal';
 
 const BOOK_COLORS = ['#0A5386', '#254454', '#133F47', '#8B1E1E', '#1B5E5A', '#2F333C'];
 
@@ -36,6 +37,10 @@ export const JournalView: React.FC = () => {
   const [newBookKind, setNewBookKind] = useState<JournalKind>('Idea');
   const [newBookFirstPage, setNewBookFirstPage] = useState('');
   const [customBooks, setCustomBooks] = useState<{ name: string; color: string }[]>([]);
+  const [deleteBookTarget, setDeleteBookTarget] = useState<{
+    name: string;
+    pageIds: string[];
+  } | null>(null);
 
   const [kindFilter, setKindFilter] = useState<'All' | JournalKind>('All');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -164,9 +169,14 @@ export const JournalView: React.FC = () => {
     setSelectedId(created.id);
   };
 
-  const handleDeleteBook = async (bookName: string, pageIds: string[]) => {
-    const label = pageIds.length === 1 ? '1 page' : `${pageIds.length} pages`;
-    if (!window.confirm(`Delete "${bookName}" and its ${label} from the shelf?`)) return;
+  const handleDeleteBook = (bookName: string, pageIds: string[]) => {
+    setDeleteBookTarget({ name: bookName, pageIds });
+  };
+
+  const confirmDeleteBook = async () => {
+    if (!deleteBookTarget) return;
+    const { name: bookName, pageIds } = deleteBookTarget;
+    setDeleteBookTarget(null);
     for (const id of pageIds) {
       await deleteJournalEntry(id);
     }
@@ -535,6 +545,23 @@ export const JournalView: React.FC = () => {
             </form>
           </div>
         )}
+
+        <ConfirmModal
+          open={Boolean(deleteBookTarget)}
+          title="Delete Book"
+          message={
+            deleteBookTarget
+              ? `Delete "${deleteBookTarget.name}" and its ${
+                  deleteBookTarget.pageIds.length === 1
+                    ? '1 page'
+                    : `${deleteBookTarget.pageIds.length} pages`
+                } from the shelf?`
+              : ''
+          }
+          confirmLabel="Delete Book"
+          onConfirm={confirmDeleteBook}
+          onCancel={() => setDeleteBookTarget(null)}
+        />
       </div>
     );
   }

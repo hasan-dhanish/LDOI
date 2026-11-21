@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft, CheckCircle2, Trash2 } from 'lucide-react';
 import { useLdoi } from '../context/LdoiContext';
+import { ConfirmModal } from './ConfirmModal';
 import { ProjectPinboard } from './ProjectPinboard';
 
 interface ProjectDetailViewProps {
@@ -13,6 +14,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   onBack,
 }) => {
   const { projects, updateProject, deleteProject } = useLdoi();
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const project = projects.find((p) => p.id === projectId);
 
@@ -38,10 +40,9 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   };
 
   const handleDeleteProject = async () => {
-    if (window.confirm(`Delete "${project.title}" and all its tasks/notes?`)) {
-      await deleteProject(project.id);
-      onBack();
-    }
+    setConfirmDeleteOpen(false);
+    await deleteProject(project.id);
+    onBack();
   };
 
   return (
@@ -75,7 +76,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         )}
         <button
           type="button"
-          onClick={handleDeleteProject}
+          onClick={() => setConfirmDeleteOpen(true)}
           title="Delete Project"
           className="ios-press inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full paper-card border border-[#E4E2DC] hover:border-[#DC2626] text-xs font-semibold text-[#71717A] hover:text-[#DC2626] shadow-lg"
         >
@@ -86,6 +87,15 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
       {/* Full-Screen Pinboard Matrix Canvas */}
       <ProjectPinboard project={project} />
+
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title="Delete Project"
+        message={`Delete "${project.title}" and all its pinned pages, files, and notes?`}
+        confirmLabel="Delete Project"
+        onConfirm={handleDeleteProject}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
     </div>
   );
 };
