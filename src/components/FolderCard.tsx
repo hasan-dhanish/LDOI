@@ -62,26 +62,26 @@ export const FolderCard: React.FC<FolderCardProps> = ({
       onClick={onClick}
       className="ios-press group text-left w-full focus:outline-none"
     >
-      <div className="paper-card rounded-2xl p-4 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md">
+      <div className="paper-card rounded-2xl p-3 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md">
         {/* Tactile Apple-style Layered Folder */}
-        <div className="relative h-36 w-full pt-4">
-          <div className={`absolute top-2 left-0 w-24 h-6 rounded-t-xl ${style.back}`} />
-          <div className={`absolute top-5 inset-x-0 bottom-0 rounded-xl ${style.back}`} />
+        <div className="relative h-28 w-full pt-3">
+          <div className={`absolute top-1.5 left-0 w-20 h-5 rounded-t-lg ${style.back}`} />
+          <div className={`absolute top-4 inset-x-0 bottom-0 rounded-lg ${style.back}`} />
 
           {/* Peeking Paper Sheet 1 */}
-          <div className="absolute top-3 left-3 right-6 h-16 bg-[#F2F1EC] border border-[#E2E0D8] rounded-lg shadow-xs transform -rotate-2 transition-transform duration-150 group-hover:-rotate-3" />
+          <div className="absolute top-2.5 left-2.5 right-5 h-12 bg-[#F2F1EC] border border-[#E2E0D8] rounded-md shadow-xs transform -rotate-2 transition-transform duration-150 group-hover:-rotate-3" />
 
           {/* Peeking Paper Sheet 2 */}
-          <div className="absolute top-2 left-6 right-3 h-16 bg-white border border-[#E2E0D8] rounded-lg shadow-xs p-2.5 transform rotate-1 transition-transform duration-150 group-hover:rotate-2">
+          <div className="absolute top-1.5 left-5 right-2.5 h-12 bg-white border border-[#E2E0D8] rounded-md shadow-xs p-2 transform rotate-1 transition-transform duration-150 group-hover:rotate-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#3A3A3C]">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-[#3A3A3C]">
                 {project.category}
               </span>
-              <span className="text-[10px] font-mono-num font-semibold text-[#8E8E93]">
+              <span className="text-[9px] font-mono-num font-semibold text-[#8E8E93]">
                 {progress}%
               </span>
             </div>
-            <div className="mt-1.5 space-y-1">
+            <div className="mt-1 space-y-1">
               <div className="h-1 w-3/4 bg-[#E2E0D8] rounded-xs" />
               <div className="h-1 w-1/2 bg-[#EFECE6] rounded-xs" />
             </div>
@@ -89,7 +89,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
 
           {/* Front Tactile Folder Flap */}
           <div
-            className={`absolute inset-x-0 bottom-0 top-10 rounded-xl ${style.bg} ${style.text} p-3.5 flex flex-col justify-between shadow-sm border-t border-white/25`}
+            className={`absolute inset-x-0 bottom-0 top-8 rounded-lg ${style.bg} ${style.text} p-2.5 flex flex-col justify-between shadow-sm border-t border-white/25`}
           >
             <div className="flex items-center justify-between">
               <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border ${style.badge}`}>

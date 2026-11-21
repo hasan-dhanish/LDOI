@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowRight,
   BookOpen,
@@ -7,8 +7,6 @@ import {
   FolderPlus,
   Inbox,
   IndianRupee,
-  Plus,
-  Radio,
   Square,
 } from 'lucide-react';
 import { formatDateShort, formatInr, getDeadlineUrgency } from '../constants';
@@ -33,64 +31,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     journalEntries,
     documents,
     quotations,
-    liveTypingMap,
     toggleWorkflowStep,
-    createJournalEntry,
-    updateJournalEntry,
-    broadcastTyping,
   } = useLdoi();
-
-  // Live Team Scratchpad (real-time keystroke sync + saved to journal)
-  const scratchpadEntry =
-    journalEntries.find((j) => j.title === 'Live Team Scratchpad') ?? null;
-  const [scratchDraft, setScratchDraft] = useState(scratchpadEntry?.content ?? '');
-  const scratchSaveRef = useRef<number | null>(null);
-  const scratchLastEditRef = useRef<number>(0);
-  const scratchLatestRef = useRef<string>(scratchpadEntry?.content ?? '');
-  const scratchCreatingRef = useRef<boolean>(false);
-  const scratchTyping = liveTypingMap['team-scratchpad'];
-
-  useEffect(() => {
-    const recentlyEdited = Date.now() - scratchLastEditRef.current < 1800;
-    if (
-      scratchpadEntry &&
-      !recentlyEdited &&
-      (!scratchTyping || scratchTyping.author === currentUser?.name)
-    ) {
-      setScratchDraft(scratchpadEntry.content);
-      scratchLatestRef.current = scratchpadEntry.content;
-    }
-  }, [scratchpadEntry?.content, scratchTyping, currentUser?.name, scratchpadEntry]);
-
-  useEffect(() => {
-    if (scratchTyping && scratchTyping.author !== currentUser?.name) {
-      setScratchDraft(scratchTyping.text);
-      scratchLatestRef.current = scratchTyping.text;
-    }
-  }, [scratchTyping, currentUser?.name]);
-
-  const handleScratchChange = (val: string) => {
-    scratchLastEditRef.current = Date.now();
-    scratchLatestRef.current = val;
-    setScratchDraft(val);
-    broadcastTyping('team-scratchpad', val);
-    if (scratchSaveRef.current) window.clearTimeout(scratchSaveRef.current);
-    scratchSaveRef.current = window.setTimeout(async () => {
-      const latest = scratchLatestRef.current;
-      if (scratchpadEntry) {
-        await updateJournalEntry(scratchpadEntry.id, { content: latest });
-      } else if (latest.trim() && !scratchCreatingRef.current) {
-        scratchCreatingRef.current = true;
-        await createJournalEntry({
-          kind: 'Learning',
-          title: 'Live Team Scratchpad',
-          content: latest,
-          tags: ['Team'],
-        });
-        scratchCreatingRef.current = false;
-      }
-    }, 350);
-  };
 
   const myName = currentUser?.name ?? 'Hasan';
   const myPendingTasks = workflowSteps
@@ -235,49 +177,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Live Team Notes Scratchpad (Front & Center Real-Time Sync) */}
-      <section className="paper-card rounded-2xl p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2.5">
-            <span className="w-7 h-7 rounded-lg bg-[#1B5E5A] text-white flex items-center justify-center">
-              <Radio className="w-4 h-4" />
-            </span>
-            <div>
-              <h2 className="text-sm font-bold text-[#1C1C1E]">
-                Live Team Notes
-              </h2>
-              <p className="text-[11px] text-[#8E8E93]">
-                Type here and everyone on the team sees it in real time.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {scratchTyping && scratchTyping.author !== currentUser?.name && (
-              <span className="px-2.5 py-1 text-[11px] font-semibold bg-[#0A5386]/20 text-[#5FA8E0] border border-[#0A5386]/40 rounded-lg">
-                {scratchTyping.author} is typing...
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => onNavigate('journal')}
-              className="ios-press inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-[#E2E0D8] hover:border-[#0A5386] rounded-lg text-[#1C1C1E]"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              All Notes ({journalEntries.length})
-            </button>
-          </div>
-        </div>
-
-        <textarea
-          rows={5}
-          value={scratchDraft}
-          onChange={(e) => handleScratchChange(e.target.value)}
-          placeholder="Jot down quick meeting notes, ideas, or updates for Hasan, Aathavan, Allen, and Harsath..."
-          className="w-full p-3.5 text-sm text-[#1C1C1E] ruled-paper border border-[#E2E0D8] rounded-xl focus:outline-none focus:border-[#0A5386] resize-y"
-        />
-      </section>
 
       {/* Main 2-Widget Row */}
       <div className="grid lg:grid-cols-2 gap-5">
@@ -456,7 +355,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
             {activeProjects.slice(0, 6).map((p) => {
               const steps = workflowSteps.filter((s) => s.projectId === p.id);
               const done = steps.filter((s) => s.completed).length;

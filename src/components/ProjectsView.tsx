@@ -119,7 +119,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
           </p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
           {filtered.map((p) => {
             const steps = workflowSteps.filter((s) => s.projectId === p.id);
             const done = steps.filter((s) => s.completed).length;
