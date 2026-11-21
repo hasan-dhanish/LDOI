@@ -31,10 +31,10 @@ const NAV_ITEMS: {
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
   { id: 'dashboard', label: 'My Dashboard', color: '#0A5386', icon: LayoutDashboard },
+  { id: 'journal', label: 'Live Notes & Ideas', color: '#1B5E5A', icon: BookOpen },
   { id: 'projects', label: 'Projects', color: '#254454', icon: FolderKanban },
   { id: 'enquiries', label: 'Enquiries', color: '#133F47', icon: Inbox },
   { id: 'deadlines', label: 'Deadlines', color: '#8B1E1E', icon: CalendarClock },
-  { id: 'journal', label: 'Ideas & Learnings', color: '#1B5E5A', icon: BookOpen },
   { id: 'quotations', label: 'Quotations & Docs', color: '#2F333C', icon: FileSpreadsheet },
 ];
 
