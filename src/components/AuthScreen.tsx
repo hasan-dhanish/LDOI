@@ -145,7 +145,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             <div
               className={`flex rounded-xl p-1 border ${
                 darkMode
-                  ? 'bg-black/30 border-white/10'
+                  ? 'bg-[#121318]/85 border-white/15'
                   : 'bg-[#EAE4D7]/80 border-[#8C806E]/15'
               }`}
             >
@@ -158,7 +158,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 className={`ios-press flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
                   mode === 'signin'
                     ? darkMode
-                      ? 'bg-white/15 text-white shadow-xs border border-white/15'
+                      ? 'bg-[#2C303A] text-white shadow-xs border border-white/25'
                       : 'bg-white/85 text-[#23211E] shadow-xs border border-white/70'
                     : darkMode
                     ? 'text-zinc-400 hover:text-white'
@@ -176,7 +176,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 className={`ios-press flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
                   mode === 'signup'
                     ? darkMode
-                      ? 'bg-white/15 text-white shadow-xs border border-white/15'
+                      ? 'bg-[#2C303A] text-white shadow-xs border border-white/25'
                       : 'bg-white/85 text-[#23211E] shadow-xs border border-white/70'
                     : darkMode
                     ? 'text-zinc-400 hover:text-white'
@@ -252,7 +252,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     placeholder="name@company.com"
                     className={`w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl focus:outline-none focus:ring-2 ${
                       darkMode
-                        ? 'bg-black/30 border border-white/15 text-white placeholder:text-zinc-500 focus:border-[#388BFD] focus:ring-[#388BFD]/20'
+                        ? 'bg-[#181A20]/90 border border-white/20 text-white placeholder:text-zinc-400 focus:bg-[#1E2128] focus:border-[#388BFD] focus:ring-[#388BFD]/25'
                         : 'bg-white/65 border border-white/75 text-[#23211E] placeholder:text-[#787065] focus:bg-white/85 focus:border-[#2E74B5] focus:ring-[#2E74B5]/15'
                     }`}
                   />
@@ -281,7 +281,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     placeholder="Minimum 6 characters"
                     className={`w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl focus:outline-none focus:ring-2 ${
                       darkMode
-                        ? 'bg-black/30 border border-white/15 text-white placeholder:text-zinc-500 focus:border-[#388BFD] focus:ring-[#388BFD]/20'
+                        ? 'bg-[#181A20]/90 border border-white/20 text-white placeholder:text-zinc-400 focus:bg-[#1E2128] focus:border-[#388BFD] focus:ring-[#388BFD]/25'
                         : 'bg-white/65 border border-white/75 text-[#23211E] placeholder:text-[#787065] focus:bg-white/85 focus:border-[#2E74B5] focus:ring-[#2E74B5]/15'
                     }`}
                   />
