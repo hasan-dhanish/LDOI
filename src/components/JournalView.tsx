@@ -277,16 +277,6 @@ export const JournalView: React.FC = () => {
                       {/* Subtle Debossed Cover Frame */}
                       <div className="absolute inset-y-2.5 left-5 right-3 rounded-sm border border-white/12 pointer-events-none" />
 
-                      {/* Realistic Layered Page Stack Edge on Right */}
-                      <div
-                        className="absolute inset-y-1.5 right-0 w-1.5 rounded-l-[1px] shadow-[inset_1px_0_2px_rgba(0,0,0,0.25)] pointer-events-none"
-                        style={{
-                          backgroundColor: '#EFECE4',
-                          backgroundImage:
-                            'repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,0,0,0.10) 3px)',
-                        }}
-                      />
-
                       {/* V-Notched Bookmark Ribbon */}
                       <div
                         className="absolute top-0 right-4 w-3 h-7 bg-[#8B1E1E] shadow-[0_2px_4px_rgba(0,0,0,0.35)] pointer-events-none"
