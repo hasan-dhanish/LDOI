@@ -37,31 +37,31 @@
 }
 
 .dark-theme .paper-card {
-  background-color: rgba(23, 24, 29, 0.94);
-  border-color: rgba(255, 255, 255, 0.09);
+  background-color: rgba(34, 37, 45, 0.94);
+  border-color: rgba(255, 255, 255, 0.13);
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.35),
     0 10px 28px rgba(0, 0, 0, 0.3);
 }
 
 .dark-theme .ruled-paper {
-  background-color: #131418;
-  background-image: linear-gradient(to bottom, transparent 31px, #23252d 32px);
+  background-color: #1b1d24;
+  background-image: linear-gradient(to bottom, transparent 31px, #2b2e38 32px);
   color: #f4f4f5;
 }
 
 .dark-theme aside {
-  background-color: rgba(20, 21, 26, 0.92) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(26, 28, 35, 0.94) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
   box-shadow: none !important;
 }
 
 .dark-theme input,
 .dark-theme textarea,
 .dark-theme select {
-  background-color: #121317 !important;
+  background-color: #181a20 !important;
   color: #f4f4f5 !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
 }
 
 .dark-theme .bg-white,
@@ -72,7 +72,7 @@
 .dark-theme .bg-\[\#F7F6F2\],
 .dark-theme .bg-\[\#F2F1EC\],
 .dark-theme .bg-\[\#F4F3EE\] {
-  background-color: #1c1e24 !important;
+  background-color: #292c36 !important;
 }
 
 .dark-theme .text-\[\#18181B\],
