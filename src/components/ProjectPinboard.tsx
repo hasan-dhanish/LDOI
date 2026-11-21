@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   CheckSquare,
   Crosshair,
@@ -63,9 +63,14 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     loadBoardPositions(project.id)
   );
   const [zoom, setZoom] = useState(1);
+  const zoomRef = useRef(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
   const dragRef = useRef<{
     cardId: string;
     startX: number;
@@ -218,18 +223,56 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     zoomAtPoint(nextZoomRaw, cx, cy);
   };
 
-  const handleCanvasWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      const factor = Math.exp(-e.deltaY * 0.0028);
-      zoomAtPoint(zoom * factor, e.clientX, e.clientY);
-      return;
+  useEffect(() => {
+    const prevHtmlOverscroll = document.documentElement.style.overscrollBehaviorX;
+    const prevBodyOverscroll = document.body.style.overscrollBehaviorX;
+    document.documentElement.style.overscrollBehaviorX = 'none';
+    document.body.style.overscrollBehaviorX = 'none';
+
+    const el = viewportRef.current;
+    if (!el) {
+      return () => {
+        document.documentElement.style.overscrollBehaviorX = prevHtmlOverscroll;
+        document.body.style.overscrollBehaviorX = prevBodyOverscroll;
+      };
     }
-    setPan((prev) => ({
-      x: prev.x - (e.shiftKey ? e.deltaY : e.deltaX),
-      y: prev.y - (e.shiftKey ? 0 : e.deltaY),
-    }));
-  };
+
+    const onNativeWheel = (e: WheelEvent) => {
+      // Non-passive listener blocks browser history back/forward swipe & browser pinch-zoom
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) {
+        const currentZoom = zoomRef.current;
+        const factor = Math.exp(-e.deltaY * 0.0028);
+        const nextZoom = Math.min(2.5, Math.max(0.05, Number((currentZoom * factor).toFixed(3))));
+        const rect = el.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+        setPan((prevPan) => {
+          const worldX = (cx - prevPan.x) / currentZoom;
+          const worldY = (cy - prevPan.y) / currentZoom;
+          return {
+            x: cx - worldX * nextZoom,
+            y: cy - worldY * nextZoom,
+          };
+        });
+        zoomRef.current = nextZoom;
+        setZoom(nextZoom);
+        return;
+      }
+
+      setPan((prev) => ({
+        x: prev.x - (e.shiftKey ? e.deltaY : e.deltaX),
+        y: prev.y - (e.shiftKey ? 0 : e.deltaY),
+      }));
+    };
+
+    el.addEventListener('wheel', onNativeWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onNativeWheel);
+      document.documentElement.style.overscrollBehaviorX = prevHtmlOverscroll;
+      document.body.style.overscrollBehaviorX = prevBodyOverscroll;
+    };
+  }, []);
 
   const startCanvasPan = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget && e.button !== 1) return;
@@ -406,12 +449,13 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
       {/* True Infinite Pan & Zoom Matrix Canvas (Dotted Matrix, No Scrollbars) */}
       <div
         ref={viewportRef}
-        onWheel={handleCanvasWheel}
         onPointerDown={startCanvasPan}
         className={`flex-1 overflow-hidden relative select-none ${
           isPanning ? 'cursor-grabbing' : 'cursor-grab'
         }`}
         style={{
+          overscrollBehavior: 'none',
+          touchAction: 'none',
           backgroundImage: `radial-gradient(rgba(140, 128, 110, ${Math.min(
             0.35,
             Math.max(0.12, 0.28 * zoom)
