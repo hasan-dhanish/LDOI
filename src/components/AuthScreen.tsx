@@ -231,11 +231,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                             type="button"
                             onClick={() => setMemberName(m.name)}
                             title={m.name}
-                            className={`ios-press flex items-center gap-2 h-9 px-2 rounded-xl border text-xs font-semibold transition-all duration-300 ease-out overflow-hidden ${
+                            className={`ios-press flex items-center h-9 px-2 rounded-xl border text-xs font-semibold transition-all duration-300 ease-out overflow-hidden ${
                               active
                                 ? darkMode
-                                  ? 'flex-1 border-[#388BFD] bg-[#388BFD]/20 text-white px-2.5'
-                                  : 'flex-1 border-[#2E74B5] bg-[#2E74B5]/12 text-[#2E74B5] px-2.5'
+                                  ? 'border-[#388BFD] bg-[#388BFD]/20 text-white pr-3'
+                                  : 'border-[#2E74B5] bg-[#2E74B5]/12 text-[#2E74B5] pr-3'
                                 : darkMode
                                 ? 'border-white/15 bg-white/8 text-zinc-200 hover:bg-white/15'
                                 : 'border-white/70 bg-white/60 text-[#23211E] hover:bg-white/85'
@@ -247,11 +247,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                             >
                               {m.initials}
                             </span>
-                            {active && (
-                              <span className="truncate whitespace-nowrap">
-                                {m.name}
-                              </span>
-                            )}
+                            <span
+                              className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-out ${
+                                active
+                                  ? 'max-w-[96px] opacity-100 ml-2'
+                                  : 'max-w-0 opacity-0 ml-0'
+                              }`}
+                            >
+                              {m.name}
+                            </span>
                           </button>
                         );
                       })}
