@@ -477,29 +477,37 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               left: getPos('checkpoints').x,
               top: getPos('checkpoints').y,
             }}
-            className="absolute w-[332px] paper-card rounded-xl shadow-lg overflow-hidden"
+            className="absolute w-[340px] paper-card rounded-2xl border-t-[3px] border-t-[#0A5386] shadow-[0_14px_34px_rgba(24,24,27,0.08),0_2px_6px_rgba(24,24,27,0.04)] overflow-hidden"
           >
             <div
               onPointerDown={(e) => startDrag('checkpoints', e)}
-              className="px-3.5 py-2.5 bg-[#0A5386] text-white flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
+              className="px-4 py-3 border-b border-[#E4E2DC]/80 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
             >
-              <span className="text-xs font-bold">
-                Requirements ({cpDone}/{checkpoints.length})
-              </span>
-              <GripHorizontal className="w-4 h-4 opacity-75" />
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#0A5386] ring-2 ring-[#0A5386]/20 shrink-0" />
+                <div>
+                  <div className="text-[10px] font-mono-num uppercase tracking-wider text-[#71717A]">
+                    01 · Checklist
+                  </div>
+                  <div className="text-xs font-bold text-[#18181B]">
+                    Requirements ({cpDone}/{checkpoints.length})
+                  </div>
+                </div>
+              </div>
+              <GripHorizontal className="w-4 h-4 text-[#A1A1AA]" />
             </div>
 
-            <div className="p-3.5 space-y-2.5">
-              <div className="max-h-48 overflow-y-auto space-y-1.5">
+            <div className="p-4 space-y-3">
+              <div className="max-h-52 overflow-y-auto space-y-1.5">
                 {checkpoints.length === 0 ? (
-                  <div className="text-[11px] text-[#71717A] py-3 text-center">
+                  <div className="text-[11px] text-[#71717A] py-4 text-center">
                     No requirement checkpoints yet.
                   </div>
                 ) : (
                   checkpoints.map((cp) => (
                     <div
                       key={cp.id}
-                      className="flex items-start justify-between gap-2 p-2 rounded-lg border border-[#E4E2DC] bg-[#FAF9F6]"
+                      className="flex items-start justify-between gap-2 px-2.5 py-2 rounded-xl border border-[#E4E2DC]/70 bg-[#FAF9F6]/70"
                     >
                       <button
                         type="button"
@@ -507,9 +515,9 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                         className="flex items-start gap-2 text-left flex-1 min-w-0"
                       >
                         {cp.done ? (
-                          <CheckSquare className="w-3.5 h-3.5 text-[#133F47] shrink-0 mt-0.5" />
+                          <CheckSquare className="w-3.5 h-3.5 text-[#0A5386] shrink-0 mt-0.5" />
                         ) : (
-                          <Square className="w-3.5 h-3.5 text-[#71717A] shrink-0 mt-0.5" />
+                          <Square className="w-3.5 h-3.5 text-[#A1A1AA] shrink-0 mt-0.5" />
                         )}
                         <span
                           className={`text-xs leading-snug ${
@@ -522,7 +530,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                       <button
                         type="button"
                         onClick={() => handleRemoveCheckpoint(cp.id)}
-                        className="text-[#71717A] hover:text-[#DC2626] shrink-0"
+                        className="text-[#A1A1AA] hover:text-[#DC2626] shrink-0"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -531,17 +539,17 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                 )}
               </div>
 
-              <form onSubmit={handleAddCheckpoint} className="flex gap-1.5 pt-1">
+              <form onSubmit={handleAddCheckpoint} className="flex gap-1.5 pt-1 border-t border-[#E4E2DC]/60">
                 <input
                   type="text"
                   value={newCp}
                   onChange={(e) => setNewCp(e.target.value)}
-                  placeholder="Add requirement checkpoint..."
-                  className="flex-1 px-2.5 py-1.5 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-md"
+                  placeholder="Add requirement..."
+                  className="flex-1 px-2.5 py-1.5 text-xs bg-transparent focus:outline-none placeholder:text-[#A1A1AA]"
                 />
                 <button
                   type="submit"
-                  className="px-2.5 py-1.5 text-xs font-semibold bg-[#0A5386] text-white rounded-md"
+                  className="ios-press p-1.5 bg-[#0A5386] text-white rounded-lg"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
@@ -552,22 +560,30 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           {/* 2. Spec & Team Idea Page Card */}
           <div
             style={{ left: getPos('spec').x, top: getPos('spec').y }}
-            className="absolute w-[332px] paper-card rounded-xl shadow-lg overflow-hidden"
+            className="absolute w-[340px] paper-card rounded-2xl border-t-[3px] border-t-[#254454] shadow-[0_14px_34px_rgba(24,24,27,0.08),0_2px_6px_rgba(24,24,27,0.04)] overflow-hidden"
           >
             <div
               onPointerDown={(e) => startDrag('spec', e)}
-              className="px-3.5 py-2.5 bg-[#254454] text-white flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
+              className="px-4 py-3 border-b border-[#E4E2DC]/80 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
             >
-              <span className="text-xs font-bold">Spec &amp; Team Idea</span>
-              <GripHorizontal className="w-4 h-4 opacity-75" />
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#254454] ring-2 ring-[#254454]/20 shrink-0" />
+                <div>
+                  <div className="text-[10px] font-mono-num uppercase tracking-wider text-[#71717A]">
+                    02 · Spec Sheet
+                  </div>
+                  <div className="text-xs font-bold text-[#18181B]">Spec &amp; Team Idea</div>
+                </div>
+              </div>
+              <GripHorizontal className="w-4 h-4 text-[#A1A1AA]" />
             </div>
-            <div className="p-3.5">
+            <div className="p-4">
               <textarea
                 rows={9}
                 value={project.teamIdea}
                 onChange={(e) => updateProject(project.id, { teamIdea: e.target.value })}
                 placeholder="Write architecture, hardware specs, and team approach..."
-                className="w-full p-2.5 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg resize-y"
+                className="w-full text-xs leading-relaxed bg-transparent focus:outline-none resize-y placeholder:text-[#A1A1AA]"
               />
             </div>
           </div>
@@ -575,58 +591,72 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           {/* 3. Workflow Steps Card */}
           <div
             style={{ left: getPos('workflow').x, top: getPos('workflow').y }}
-            className="absolute w-[332px] paper-card rounded-xl shadow-lg overflow-hidden"
+            className="absolute w-[340px] paper-card rounded-2xl border-t-[3px] border-t-[#133F47] shadow-[0_14px_34px_rgba(24,24,27,0.08),0_2px_6px_rgba(24,24,27,0.04)] overflow-hidden"
           >
             <div
               onPointerDown={(e) => startDrag('workflow', e)}
-              className="px-3.5 py-2.5 bg-[#133F47] text-white flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
+              className="px-4 py-3 border-b border-[#E4E2DC]/80 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
             >
-              <span className="text-xs font-bold">
-                Workflow ({steps.filter((s) => s.completed).length}/{steps.length})
-              </span>
-              <GripHorizontal className="w-4 h-4 opacity-75" />
-            </div>
-            <div className="p-3.5 space-y-2.5">
-              <div className="max-h-48 overflow-y-auto space-y-1.5">
-                {steps.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => toggleWorkflowStep(s.id)}
-                    className="w-full flex items-center justify-between gap-2 p-2 rounded-lg border border-[#E4E2DC] bg-[#FAF9F6] text-left"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      {s.completed ? (
-                        <CheckSquare className="w-3.5 h-3.5 text-[#133F47] shrink-0" />
-                      ) : (
-                        <Square className="w-3.5 h-3.5 text-[#71717A] shrink-0" />
-                      )}
-                      <span
-                        className={`text-xs truncate ${
-                          s.completed ? 'line-through text-[#71717A]' : 'text-[#18181B]'
-                        }`}
-                      >
-                        {s.title}
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white border border-[#E4E2DC] shrink-0">
-                      {s.assignee}
-                    </span>
-                  </button>
-                ))}
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#133F47] ring-2 ring-[#133F47]/20 shrink-0" />
+                <div>
+                  <div className="text-[10px] font-mono-num uppercase tracking-wider text-[#71717A]">
+                    03 · Execution
+                  </div>
+                  <div className="text-xs font-bold text-[#18181B]">
+                    Workflow ({steps.filter((s) => s.completed).length}/{steps.length})
+                  </div>
+                </div>
               </div>
-              <form onSubmit={handleAddStep} className="grid grid-cols-12 gap-1.5">
+              <GripHorizontal className="w-4 h-4 text-[#A1A1AA]" />
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="max-h-48 overflow-y-auto space-y-1.5">
+                {steps.length === 0 ? (
+                  <div className="text-[11px] text-[#71717A] py-3 text-center">
+                    No workflow steps yet.
+                  </div>
+                ) : (
+                  steps.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => toggleWorkflowStep(s.id)}
+                      className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl border border-[#E4E2DC]/70 bg-[#FAF9F6]/70 text-left"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {s.completed ? (
+                          <CheckSquare className="w-3.5 h-3.5 text-[#133F47] shrink-0" />
+                        ) : (
+                          <Square className="w-3.5 h-3.5 text-[#A1A1AA] shrink-0" />
+                        )}
+                        <span
+                          className={`text-xs truncate ${
+                            s.completed ? 'line-through text-[#71717A]' : 'text-[#18181B]'
+                          }`}
+                        >
+                          {s.title}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white border border-[#E4E2DC] shrink-0">
+                        {s.assignee}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+              <form onSubmit={handleAddStep} className="grid grid-cols-12 gap-1.5 pt-1 border-t border-[#E4E2DC]/60">
                 <input
                   type="text"
                   value={newStep}
                   onChange={(e) => setNewStep(e.target.value)}
                   placeholder="Add workflow step..."
-                  className="col-span-6 px-2 py-1.5 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-md"
+                  className="col-span-6 px-2 py-1.5 text-xs bg-transparent focus:outline-none placeholder:text-[#A1A1AA]"
                 />
                 <select
                   value={newStepAssignee}
                   onChange={(e) => setNewStepAssignee(e.target.value as MemberName)}
-                  className="col-span-4 px-1.5 py-1.5 text-[11px] bg-[#FAF9F6] border border-[#E4E2DC] rounded-md"
+                  className="col-span-4 px-1.5 py-1.5 text-[11px] bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
                 >
                   {MEMBER_NAMES.map((m) => (
                     <option key={m} value={m}>
@@ -636,7 +666,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                 </select>
                 <button
                   type="submit"
-                  className="col-span-2 flex items-center justify-center bg-[#133F47] text-white rounded-md"
+                  className="ios-press col-span-2 flex items-center justify-center bg-[#133F47] text-white rounded-lg"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
@@ -647,67 +677,100 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           {/* 4. Project Controls Card */}
           <div
             style={{ left: getPos('controls').x, top: getPos('controls').y }}
-            className="absolute w-[332px] paper-card rounded-xl shadow-lg overflow-hidden"
+            className="absolute w-[340px] paper-card rounded-2xl border-t-[3px] border-t-[#3F3F46] shadow-[0_14px_34px_rgba(24,24,27,0.08),0_2px_6px_rgba(24,24,27,0.04)] overflow-hidden"
           >
             <div
               onPointerDown={(e) => startDrag('controls', e)}
-              className="px-3.5 py-2.5 bg-[#2F333C] text-white flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
+              className="px-4 py-3 border-b border-[#E4E2DC]/80 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
             >
-              <span className="text-xs font-bold">Project Details</span>
-              <GripHorizontal className="w-4 h-4 opacity-75" />
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#3F3F46] ring-2 ring-[#3F3F46]/20 shrink-0" />
+                <div>
+                  <div className="text-[10px] font-mono-num uppercase tracking-wider text-[#71717A]">
+                    04 · Brief
+                  </div>
+                  <div className="text-xs font-bold text-[#18181B]">Project Details</div>
+                </div>
+              </div>
+              <GripHorizontal className="w-4 h-4 text-[#A1A1AA]" />
             </div>
-            <div className="p-3.5 space-y-2.5 text-xs">
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  value={project.title}
-                  onChange={(e) => updateProject(project.id, { title: e.target.value })}
-                  placeholder="Project Name"
-                  className="px-2.5 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-md"
-                />
-                <input
-                  type="text"
-                  value={project.clientName}
-                  onChange={(e) => updateProject(project.id, { clientName: e.target.value })}
-                  placeholder="Client Name"
-                  className="px-2.5 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-md"
-                />
+            <div className="p-4 space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-[#71717A] mb-1">
+                    Project
+                  </div>
+                  <input
+                    type="text"
+                    value={project.title}
+                    onChange={(e) => updateProject(project.id, { title: e.target.value })}
+                    placeholder="Project Name"
+                    className="w-full px-2.5 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
+                  />
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-[#71717A] mb-1">
+                    Client
+                  </div>
+                  <input
+                    type="text"
+                    value={project.clientName}
+                    onChange={(e) => updateProject(project.id, { clientName: e.target.value })}
+                    placeholder="Client Name"
+                    className="w-full px-2.5 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <select
-                  value={project.status}
-                  onChange={(e) =>
-                    updateProject(project.id, { status: e.target.value as ProjectStatus })
-                  }
-                  className="px-2 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-md"
-                >
-                  {(['Planning', 'Active', 'Review', 'Completed', 'Archived'] as ProjectStatus[]).map(
-                    (s) => (
-                      <option key={s} value={s}>
-                        {s}
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-[#71717A] mb-1">
+                    Status
+                  </div>
+                  <select
+                    value={project.status}
+                    onChange={(e) =>
+                      updateProject(project.id, { status: e.target.value as ProjectStatus })
+                    }
+                    className="w-full px-2 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
+                  >
+                    {(['Planning', 'Active', 'Review', 'Completed', 'Archived'] as ProjectStatus[]).map(
+                      (s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-[#71717A] mb-1">
+                    Category
+                  </div>
+                  <select
+                    value={project.category}
+                    onChange={(e) =>
+                      updateProject(project.id, { category: e.target.value as ProjectCategory })
+                    }
+                    className="w-full px-2 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
+                  >
+                    {PROJECT_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
                       </option>
-                    )
-                  )}
-                </select>
-                <select
-                  value={project.category}
-                  onChange={(e) =>
-                    updateProject(project.id, { category: e.target.value as ProjectCategory })
-                  }
-                  className="px-2 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-md"
-                >
-                  {PROJECT_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="date"
-                  value={project.deadline}
-                  onChange={(e) => updateProject(project.id, { deadline: e.target.value })}
-                  className="px-1.5 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-md"
-                />
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-[#71717A] mb-1">
+                    Deadline
+                  </div>
+                  <input
+                    type="date"
+                    value={project.deadline}
+                    onChange={(e) => updateProject(project.id, { deadline: e.target.value })}
+                    className="w-full px-1.5 py-1.5 bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -722,24 +785,27 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               <div
                 key={doc.id}
                 style={{ left: pos.x, top: pos.y }}
-                className="absolute w-[280px] paper-card rounded-xl shadow-lg overflow-hidden"
+                className="absolute w-[280px] paper-card rounded-2xl border-t-[3px] border-t-[#254454] shadow-[0_14px_34px_rgba(24,24,27,0.08),0_2px_6px_rgba(24,24,27,0.04)] overflow-hidden"
               >
                 <div
                   onPointerDown={(e) => startDrag(cardId, e, idx)}
-                  className="px-3 py-2 bg-[#1F242D] text-white flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing select-none"
+                  className="px-3.5 py-2.5 border-b border-[#E4E2DC]/80 flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing select-none"
                 >
-                  <span className="text-[11px] font-semibold truncate">
-                    {isImage ? 'Design Inspo' : badge} · {doc.name}
-                  </span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-[#254454] shrink-0" />
+                    <span className="text-[11px] font-semibold text-[#18181B] truncate">
+                      {isImage ? 'Design Inspo' : badge} · {doc.name}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => deleteDocument(doc.id)}
-                      className="text-zinc-400 hover:text-[#FCA5A5]"
+                      className="text-[#A1A1AA] hover:text-[#DC2626]"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
-                    <GripHorizontal className="w-3.5 h-3.5 opacity-70" />
+                    <GripHorizontal className="w-3.5 h-3.5 text-[#A1A1AA]" />
                   </div>
                 </div>
 
@@ -793,14 +859,19 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               <div
                 key={note.id}
                 style={{ left: pos.x, top: pos.y }}
-                className="absolute w-[300px] paper-card rounded-xl shadow-lg overflow-hidden"
+                className="absolute w-[300px] paper-card rounded-2xl border-t-[3px] border-t-[#8B1E1E] shadow-[0_14px_34px_rgba(24,24,27,0.08),0_2px_6px_rgba(24,24,27,0.04)] overflow-hidden"
               >
                 <div
                   onPointerDown={(e) => startDrag(cardId, e, projectDocs.length + idx)}
-                  className="px-3.5 py-2 bg-[#8B1E1E] text-white flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
+                  className="px-4 py-3 border-b border-[#E4E2DC]/80 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
                 >
-                  <span className="text-xs font-bold truncate">{heading || 'Pinned Page'}</span>
-                  <GripHorizontal className="w-4 h-4 opacity-75 shrink-0" />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#8B1E1E] ring-2 ring-[#8B1E1E]/20 shrink-0" />
+                    <span className="text-xs font-bold text-[#18181B] truncate">
+                      {heading || 'Pinned Page'}
+                    </span>
+                  </div>
+                  <GripHorizontal className="w-4 h-4 text-[#A1A1AA] shrink-0" />
                 </div>
                 <div className="p-3.5 text-xs text-[#18181B] whitespace-pre-wrap leading-relaxed max-h-52 overflow-y-auto">
                   {rest.join('\n') || 'Empty page'}
