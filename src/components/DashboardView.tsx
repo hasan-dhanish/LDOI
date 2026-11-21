@@ -85,7 +85,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white border border-[#E2E0D8] text-[11px] font-semibold text-[#3A3A3C]">
-            <span className="w-2 h-2 rounded-xs bg-[#FF3B30]" />
+            <span className="w-2 h-2 rounded-xs bg-[#8B1E1E]" />
             <span>{weekday}, {dateLabel}</span>
           </div>
           <h1 className="mt-2 text-2xl font-bold text-[#1C1C1E] tracking-tight">
@@ -97,15 +97,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <button
             type="button"
             onClick={() => onNavigate('enquiries')}
-            className="ios-press inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-white border border-[#E2E0D8] hover:border-[#1C1C1E] rounded-xl text-[#1C1C1E] shadow-2xs"
+            className="ios-press inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-white border border-[#E2E0D8] hover:border-[#254454] rounded-xl text-[#1C1C1E] shadow-2xs"
           >
-            <Inbox className="w-3.5 h-3.5 text-[#FF9500]" />
+            <Inbox className="w-3.5 h-3.5 text-[#5FA8E0]" />
             New Enquiry
           </button>
           <button
             type="button"
             onClick={() => onNavigate('projects')}
-            className="ios-press inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#007AFF] hover:bg-[#0066D6] text-white rounded-xl shadow-[0_4px_12px_rgba(0,122,255,0.28)]"
+            className="ios-press inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#0A5386] hover:bg-[#0C64A1] text-white rounded-xl shadow-[0_4px_12px_rgba(10,83,134,0.32)]"
           >
             <FolderPlus className="w-3.5 h-3.5" />
             Projects
@@ -113,10 +113,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* iOS Widget Strip (Live Real Counts) */}
+      {/* LDOI Signature Widget Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div className="paper-card rounded-2xl p-4 flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#007AFF] text-white flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-[#0A5386] text-white flex items-center justify-center shrink-0">
             <CheckSquare className="w-5 h-5" />
           </div>
           <div>
@@ -128,7 +128,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="paper-card rounded-2xl p-4 flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#30B0C7] text-white flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-[#254454] text-white flex items-center justify-center shrink-0">
             <FolderPlus className="w-5 h-5" />
           </div>
           <div>
@@ -140,7 +140,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="paper-card rounded-2xl p-4 flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#FF9500] text-white flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-[#133F47] text-white flex items-center justify-center shrink-0">
             <Inbox className="w-5 h-5" />
           </div>
           <div>
@@ -152,7 +152,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="paper-card rounded-2xl p-4 flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#34C759] text-white flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-[#1B5E5A] text-white flex items-center justify-center shrink-0">
             <IndianRupee className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -170,7 +170,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <section className="paper-card rounded-2xl p-5 flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
-              <span className="w-7 h-7 rounded-lg bg-[#007AFF] text-white flex items-center justify-center">
+              <span className="w-7 h-7 rounded-lg bg-[#0A5386] text-white flex items-center justify-center">
                 <CheckSquare className="w-4 h-4" />
               </span>
               <h2 className="text-sm font-bold text-[#1C1C1E]">
@@ -247,7 +247,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <section className="paper-card rounded-2xl p-5 flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
-              <span className="w-7 h-7 rounded-lg bg-[#FF3B30] text-white flex items-center justify-center">
+              <span className="w-7 h-7 rounded-lg bg-[#8B1E1E] text-white flex items-center justify-center">
                 <CalendarClock className="w-4 h-4" />
               </span>
               <h2 className="text-sm font-bold text-[#1C1C1E]">
@@ -257,7 +257,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('deadlines')}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-[#007AFF] hover:underline"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-[#5FA8E0] hover:underline"
             >
               View all <ArrowRight className="w-3 h-3" />
             </button>
@@ -334,7 +334,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('projects')}
-              className="ios-press mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#007AFF] text-white rounded-xl hover:bg-[#0066D6]"
+              className="ios-press mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#0A5386] text-white rounded-xl hover:bg-[#0C64A1]"
             >
               <FolderPlus className="w-3.5 h-3.5" />
               Create First Project
@@ -369,7 +369,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <section className="paper-card rounded-2xl p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
-            <span className="w-7 h-7 rounded-lg bg-[#34C759] text-white flex items-center justify-center">
+            <span className="w-7 h-7 rounded-lg bg-[#1B5E5A] text-white flex items-center justify-center">
               <BookOpen className="w-4 h-4" />
             </span>
             <h2 className="text-sm font-bold text-[#1C1C1E]">
@@ -379,7 +379,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <button
             type="button"
             onClick={() => onNavigate('journal')}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-[#007AFF] hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[#5FA8E0] hover:underline"
           >
             Open notebook <ArrowRight className="w-3 h-3" />
           </button>

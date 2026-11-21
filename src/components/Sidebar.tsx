@@ -30,12 +30,12 @@ const NAV_ITEMS: {
   color: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
-  { id: 'dashboard', label: 'My Dashboard', color: '#2E74B5', icon: LayoutDashboard },
-  { id: 'projects', label: 'Projects', color: '#3B828E', icon: FolderKanban },
-  { id: 'enquiries', label: 'Enquiries', color: '#C86D44', icon: Inbox },
-  { id: 'deadlines', label: 'Deadlines', color: '#C84B31', icon: CalendarClock },
-  { id: 'journal', label: 'Ideas & Learnings', color: '#4D8B6F', icon: BookOpen },
-  { id: 'quotations', label: 'Quotations & Docs', color: '#26231F', icon: FileSpreadsheet },
+  { id: 'dashboard', label: 'My Dashboard', color: '#0A5386', icon: LayoutDashboard },
+  { id: 'projects', label: 'Projects', color: '#254454', icon: FolderKanban },
+  { id: 'enquiries', label: 'Enquiries', color: '#133F47', icon: Inbox },
+  { id: 'deadlines', label: 'Deadlines', color: '#8B1E1E', icon: CalendarClock },
+  { id: 'journal', label: 'Ideas & Learnings', color: '#1B5E5A', icon: BookOpen },
+  { id: 'quotations', label: 'Quotations & Docs', color: '#2F333C', icon: FileSpreadsheet },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -86,15 +86,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 style={
                   active
                     ? {
-                        backgroundColor: `${item.color}16`,
-                        borderColor: `${item.color}40`,
-                        color: item.color,
+                        backgroundColor: `${item.color}28`,
+                        borderColor: `${item.color}88`,
                       }
                     : undefined
                 }
                 className={`ios-press flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all ${
                   active
-                    ? 'shadow-2xs'
+                    ? 'shadow-2xs text-[#1C1C1E]'
                     : 'border-transparent text-[#3A3A3C] hover:bg-[#F2F1EC]'
                 }`}
               >

@@ -5,30 +5,30 @@ export const TEAM_MEMBERS: TeamMember[] = [
     name: 'Hasan',
     initials: 'HS',
     defaultEmailHint: 'hasan@...',
-    accentHex: '#2E74B5',
+    accentHex: '#8B1E1E',
   },
   {
     name: 'Aathavan',
     initials: 'AA',
     defaultEmailHint: 'aathavan@...',
-    accentHex: '#3B828E',
+    accentHex: '#254454',
   },
   {
     name: 'Allen',
     initials: 'AL',
     defaultEmailHint: 'allen@...',
-    accentHex: '#4D8B6F',
+    accentHex: '#133F47',
   },
   {
     name: 'Harsath',
     initials: 'HR',
     defaultEmailHint: 'harsath@...',
-    accentHex: '#C86D44',
+    accentHex: '#0A5386',
   },
 ];
 
 export function getMemberColor(name: MemberName): string {
-  return TEAM_MEMBERS.find((m) => m.name === name)?.accentHex ?? '#2E74B5';
+  return TEAM_MEMBERS.find((m) => m.name === name)?.accentHex ?? '#0A5386';
 }
 
 export const MEMBER_NAMES: MemberName[] = ['Hasan', 'Aathavan', 'Allen', 'Harsath'];
