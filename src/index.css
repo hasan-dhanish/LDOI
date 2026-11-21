@@ -20,9 +20,7 @@
 /* Engineering Workbench Background for Home Workspace */
 .ios-desk-bg {
   background-color: #f4f2ec;
-  background-image:
-    linear-gradient(rgba(244, 242, 236, 0.68), rgba(244, 242, 236, 0.74)),
-    url('/bg-workbench.jpg');
+  background-image: url('/bg-workbench.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -84,11 +82,20 @@
 }
 
 .dark-theme .paper-card {
-  background-color: rgba(34, 37, 45, 0.94);
-  border-color: rgba(255, 255, 255, 0.13);
+  background-color: rgba(24, 26, 33, 0.72);
+  -webkit-backdrop-filter: blur(22px) saturate(155%);
+  backdrop-filter: blur(22px) saturate(155%);
+  border-color: rgba(255, 255, 255, 0.14);
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.35),
-    0 10px 28px rgba(0, 0, 0, 0.3);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 32px rgba(0, 0, 0, 0.36);
+}
+
+.dark-theme aside {
+  background-color: rgba(18, 20, 26, 0.68) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(155%);
+  backdrop-filter: blur(24px) saturate(155%);
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 .dark-theme .ruled-paper {
@@ -266,13 +273,15 @@
   line-height: 32px;
 }
 
-/* Clean Paper & Ink Card */
+/* Frosted Paper & Ink Card */
 .paper-card {
-  background-color: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(140, 128, 110, 0.22);
+  background-color: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
   box-shadow:
-    0 1px 2px rgba(35, 33, 30, 0.04),
-    0 10px 28px rgba(35, 33, 30, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 12px 32px rgba(35, 33, 30, 0.1);
 }
 
 @keyframes workspaceEnter {
