@@ -256,12 +256,13 @@ export const JournalView: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 flex flex-col space-y-4">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-3 pb-2.5 border-b border-[#E4E2DC]">
                 <input
                   type="text"
                   value={draftTitle}
                   onChange={(e) => handleTitleChange(e.target.value)}
-                  className="notebook-title-input flex-1 text-lg font-semibold text-[#18181B] bg-transparent border-b border-[#E4E2DC] focus:border-[#0A5386] focus:outline-none pb-2"
+                  placeholder="Note title..."
+                  className="notebook-title-input flex-1 text-lg font-semibold text-[#18181B] bg-transparent border-0 focus:outline-none"
                 />
                 <div className="flex items-center gap-2 shrink-0">
                   {incomingTyping && incomingTyping.author !== currentUser?.name && (

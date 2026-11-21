@@ -73,9 +73,6 @@
 
 .dark-theme .notebook-title-input {
   background-color: transparent !important;
-  border-top-color: transparent !important;
-  border-left-color: transparent !important;
-  border-right-color: transparent !important;
 }
 
 .dark-theme aside {
@@ -180,13 +177,13 @@
     0 24px 56px rgba(0, 0, 0, 0.45);
 }
 
-/* Ruled notebook paper effect (padding-top: 0px keeps descenders cleanly above the 31px line) */
+/* Ruled notebook paper effect (padding-top: 8px places 31px line right under text baseline) */
 .ruled-paper {
   background-color: #fcfbf8;
   background-image: linear-gradient(to bottom, transparent 30px, #e5dfd1 31px, transparent 32px);
   background-size: 100% 32px;
   background-attachment: local;
-  padding-top: 0px !important;
+  padding-top: 8px !important;
   line-height: 32px;
 }
 
