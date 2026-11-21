@@ -27,6 +27,26 @@
   background-attachment: fixed;
 }
 
+/* Smooth Theme Switch Transition for Workspace */
+.theme-smooth,
+.theme-smooth .paper-card,
+.theme-smooth .ruled-paper,
+.theme-smooth aside,
+.theme-smooth section,
+.theme-smooth input,
+.theme-smooth textarea,
+.theme-smooth select,
+.theme-smooth button,
+.theme-smooth h1,
+.theme-smooth h2,
+.theme-smooth h3,
+.theme-smooth span,
+.theme-smooth div {
+  transition-property: background-color, color, border-color, box-shadow;
+  transition-duration: 380ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* Dark Theme Workspace Overrides */
 .dark-theme.ios-desk-bg {
   background-color: #0e0f12;

@@ -62,7 +62,7 @@ const WorkspaceShell: React.FC = () => {
 
   return (
     <div
-      className={`min-h-screen md:h-screen md:overflow-hidden ios-desk-bg flex flex-col md:flex-row animate-workspace-enter ${
+      className={`min-h-screen md:h-screen md:overflow-hidden ios-desk-bg theme-smooth flex flex-col md:flex-row animate-workspace-enter ${
         darkMode ? 'dark-theme' : ''
       }`}
     >
