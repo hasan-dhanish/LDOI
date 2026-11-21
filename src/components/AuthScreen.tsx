@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Lock, Mail, Moon, Sun, UserCheck } from 'lucide-react';
+import { CheckCircle2, Lock, Mail, Moon, Sun } from 'lucide-react';
 import { TEAM_MEMBERS } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
 import type { MemberName } from '../types';
@@ -210,55 +210,53 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               </button>
             </div>
 
-            {/* Fixed-height form stage so outer glass card never jumps in size */}
-            <div className="relative mt-5 min-h-[340px] flex flex-col">
+            {/* Compact form stage */}
+            <div className="relative mt-5 min-h-[252px] flex flex-col">
               <form onSubmit={handleSubmit} className="flex-1 flex flex-col justify-between">
                 <div className="space-y-3.5">
-                  {/* Smoothly Animated Member Picker for Create Account */}
+                  {/* Single-line Member Picker for Create Account (only selected shows full name) */}
                   <div
                     className={`transition-all duration-300 ease-out overflow-hidden ${
                       mode === 'signup'
-                        ? 'max-h-36 opacity-100 translate-y-0'
-                        : 'max-h-0 opacity-0 -translate-y-1 pointer-events-none'
+                        ? 'max-h-14 opacity-100'
+                        : 'max-h-0 opacity-0 pointer-events-none !mt-0'
                     }`}
                   >
-                    <label
-                      className={`block text-[11px] font-semibold uppercase tracking-wider mb-2 ${
-                        darkMode ? 'text-zinc-400' : 'text-[#6D665C]'
-                      }`}
-                    >
-                      Member
-                    </label>
-                  <div className="grid grid-cols-2 gap-2 pb-1">
-                    {TEAM_MEMBERS.map((m) => {
-                      const active = memberName === m.name;
-                      return (
-                        <button
-                          key={m.name}
-                          type="button"
-                          onClick={() => setMemberName(m.name)}
-                          className={`ios-press flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl border text-left transition-all ${active
-                            ? darkMode
-                              ? 'border-[#388BFD] bg-[#388BFD]/20 text-white'
-                              : 'border-[#2E74B5] bg-[#2E74B5]/12 text-[#2E74B5]'
-                            : darkMode
-                              ? 'border-white/15 bg-white/8 text-zinc-200 hover:bg-white/12'
-                              : 'border-white/70 bg-white/60 text-[#23211E] hover:bg-white/85'
+                    <div className="flex items-center gap-2">
+                      {TEAM_MEMBERS.map((m) => {
+                        const active = memberName === m.name;
+                        return (
+                          <button
+                            key={m.name}
+                            type="button"
+                            onClick={() => setMemberName(m.name)}
+                            title={m.name}
+                            className={`ios-press flex items-center gap-2 h-9 px-2 rounded-xl border text-xs font-semibold transition-all duration-300 ease-out overflow-hidden ${
+                              active
+                                ? darkMode
+                                  ? 'flex-1 border-[#388BFD] bg-[#388BFD]/20 text-white px-2.5'
+                                  : 'flex-1 border-[#2E74B5] bg-[#2E74B5]/12 text-[#2E74B5] px-2.5'
+                                : darkMode
+                                ? 'border-white/15 bg-white/8 text-zinc-200 hover:bg-white/15'
+                                : 'border-white/70 bg-white/60 text-[#23211E] hover:bg-white/85'
                             }`}
-                        >
-                          <span
-                            className="w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold text-white"
-                            style={{ backgroundColor: m.accentHex }}
                           >
-                            {m.initials}
-                          </span>
-                          <span className="flex-1">{m.name}</span>
-                          {active && <UserCheck className="w-3.5 h-3.5" />}
-                        </button>
-                      );
-                    })}
+                            <span
+                              className="w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                              style={{ backgroundColor: m.accentHex }}
+                            >
+                              {m.initials}
+                            </span>
+                            {active && (
+                              <span className="truncate whitespace-nowrap">
+                                {m.name}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
 
               <div>
                 <label
