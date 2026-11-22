@@ -628,6 +628,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   const [focusedPageId, setFocusedPageId] = useState<string | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [mouseWorld, setMouseWorld] = useState<{ x: number; y: number } | null>(null);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
 
   const pageHandlesRef = useRef<Record<string, FloatingPageHandle | null>>({});
   const [cardSizes, setCardSizes] = useState<Record<string, { w: number; h: number }>>({});
@@ -765,6 +766,57 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     pendingDeleteTimersRef.current[id] = { kind, timer };
     setHiddenPinIds((prev) => [...prev, id]);
     if (focusedPageId === id) setFocusedPageId(null);
+  };
+
+  useEffect(() => {
+    if (!confirmClearAll) return;
+    const t = window.setTimeout(() => setConfirmClearAll(false), 3500);
+    return () => window.clearTimeout(t);
+  }, [confirmClearAll]);
+
+  const handleClearAllBoard = () => {
+    if (!confirmClearAll) {
+      setConfirmClearAll(true);
+      return;
+    }
+    setConfirmClearAll(false);
+    pushHistory();
+
+    const newHiddenIds: string[] = [];
+    for (const doc of projectDocs) {
+      if (!pendingDeleteTimersRef.current[doc.id]) {
+        const timer = window.setTimeout(() => {
+          deleteDocument(doc.id);
+          delete pendingDeleteTimersRef.current[doc.id];
+        }, 10000);
+        pendingDeleteTimersRef.current[doc.id] = { kind: 'doc', timer };
+      }
+      newHiddenIds.push(doc.id);
+    }
+    for (const note of pinnedPages) {
+      if (!pendingDeleteTimersRef.current[note.id]) {
+        const timer = window.setTimeout(() => {
+          deleteProjectNote(note.id);
+          delete pendingDeleteTimersRef.current[note.id];
+        }, 10000);
+        pendingDeleteTimersRef.current[note.id] = { kind: 'note', timer };
+      }
+      newHiddenIds.push(note.id);
+    }
+
+    setHiddenPinIds((prev) => Array.from(new Set([...prev, ...newHiddenIds])));
+    setConnectors([]);
+    saveBoardConnectors(project.id, []);
+    setZones([]);
+    saveBoardZones(project.id, []);
+    setStrokes([]);
+    saveBoardStrokes(project.id, []);
+    setSelectedConnId(null);
+    setSelectedZoneId(null);
+    setFocusedPageId(null);
+    setConnectFrom(null);
+    setConnectMode(false);
+    setDrawMode(false);
   };
 
   useEffect(() => {
@@ -1942,6 +1994,23 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           className="ios-press shrink-0 p-2 rounded-full text-[#18181B] disabled:opacity-35 hover:bg-black/5"
         >
           <Redo2 className="w-3.5 h-3.5" />
+        </button>
+
+        <div className="w-px h-5 bg-[#E4E2DC] mx-0.5 shrink-0" />
+
+        <button
+          type="button"
+          disabled={totalPins + zones.length + connectors.length + strokes.length === 0}
+          onClick={handleClearAllBoard}
+          title="Clear entire canvas (Undo restores everything)"
+          className={`ios-press shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-full disabled:opacity-35 transition-colors ${
+            confirmClearAll
+              ? 'bg-[#DC2626] text-white'
+              : 'text-[#DC2626] hover:bg-[#DC2626]/10'
+          }`}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          {confirmClearAll ? 'Confirm?' : 'Clear All'}
         </button>
       </div>
 
