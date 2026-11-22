@@ -453,16 +453,10 @@
 
 .dark-theme .ruled-paper {
   background-color: #2f3646;
-  background-image:
-    linear-gradient(to right,
-      transparent 34px,
-      rgba(220, 70, 70, 0.34) 35px,
-      transparent 36px),
-    linear-gradient(to bottom,
-      transparent 30px,
-      rgba(255, 255, 255, 0.11) 31px,
-      transparent 32px);
-  padding-left: 44px !important;
+  background-image: linear-gradient(to bottom,
+    transparent 30px,
+    rgba(255, 255, 255, 0.11) 31px,
+    transparent 32px);
   color: #f4f4f5;
   border-color: #414b60;
 }
