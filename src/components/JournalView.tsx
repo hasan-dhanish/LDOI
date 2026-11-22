@@ -929,14 +929,16 @@ export const JournalView: React.FC = () => {
                 </div>
 
                 {/* Inline Tags Bar */}
-                <div className="flex flex-wrap items-center gap-1.5 pb-2.5 border-b border-[#E4E2DC]">
-                  <span className="text-xs font-semibold text-[#52525B]">Tags:</span>
+                <div className="flex flex-wrap items-center gap-1.5 pb-2.5 border-b border-[#E4E2DC]/60">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#71717A] mr-0.5">
+                    Tags
+                  </span>
                   {getDisplayTags(activeEntry.tags).map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-[#0A5386]/10 text-[#0A5386] rounded-md"
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-medium bg-[#0A5386]/15 text-[#38BDF8] rounded-full"
                     >
-                      {tag}
+                      #{tag}
                       <button
                         type="button"
                         onClick={() => handleRemoveTag(tag)}
@@ -959,8 +961,8 @@ export const JournalView: React.FC = () => {
                     onBlur={() => {
                       if (tagInput.trim()) handleAddTag(tagInput);
                     }}
-                    placeholder="Type tag & press Enter..."
-                    className="flex-1 min-w-[140px] px-1.5 py-0.5 text-xs bg-transparent text-[#18181B] border-b border-dashed border-[#D6D0C2] focus:border-[#0A5386] focus:outline-none placeholder:text-[#A1A1AA]"
+                    placeholder="+ add tag..."
+                    className="notebook-tag-input flex-1 min-w-[120px] px-2 py-0.5 text-xs focus:outline-none placeholder:text-[#71717A]"
                   />
 
                   <select
@@ -970,7 +972,7 @@ export const JournalView: React.FC = () => {
                         projectId: e.target.value || undefined,
                       })
                     }
-                    className="ml-auto px-2 py-1 text-[11px] bg-white border border-[#E4E2DC] rounded"
+                    className="ml-auto px-2.5 py-1 text-[11px] bg-white border border-[#E4E2DC] rounded-full"
                   >
                     <option value="">General (No linked project)</option>
                     {projects.map((p) => (
