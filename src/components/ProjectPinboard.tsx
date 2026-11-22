@@ -235,7 +235,9 @@ const FloatingPagePin: React.FC<{
         <div
           onPointerDown={(e) => e.stopPropagation()}
           className={`transition-opacity absolute -top-9 left-0 right-0 z-40 flex items-center justify-between gap-1 ${
-            isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            isFocused
+              ? 'opacity-100 pointer-events-auto'
+              : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'
           }`}
         >
           <div className="paper-card rounded-full px-2 py-1 shadow-lg border border-[#E4E2DC] flex items-center gap-0.5 backdrop-blur-md">
@@ -903,6 +905,10 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
     if (e.target !== e.currentTarget && e.button !== 1) return;
     if (e.target === e.currentTarget) {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      setShowElementsMenu(false);
       setSelectedConnId(null);
       if (connectMode) setConnectFrom(null);
     }
