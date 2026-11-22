@@ -144,19 +144,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold ${darkMode
-                    ? 'bg-white/10 border border-white/10 text-zinc-300'
-                    : 'bg-white/60 border border-white/60 text-[#524C44]'
-                    }`}
-                >
-                  <span
-                    className={`w-2 h-2 rounded-xs ${syncMode === 'supabase' ? 'bg-[#4D8B6F]' : 'bg-[#C86D44]'
-                      }`}
-                  />
-                  {syncMode === 'supabase' ? 'Cloud' : 'Local'}
-                </span>
-
                 <button
                   type="button"
                   onClick={onToggleDarkMode}
