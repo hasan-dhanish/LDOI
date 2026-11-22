@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import {
   ArrowRight,
   BookOpen,
-  CalendarClock,
   CheckSquare,
+  CircuitBoard,
+  Cpu,
   FolderPlus,
   IndianRupee,
   Square,
+  Timer,
 } from 'lucide-react';
 import { formatDateShort, formatInr, getDeadlineUrgency } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
@@ -96,40 +98,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="space-y-6">
       {/* Big Date & Time + Desk Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="paper-card rounded-2xl px-4 py-3 flex items-center gap-4 border border-[#E2E0D8] shadow-xs w-fit">
-          {/* Split Digital Time Display */}
-          <div className="flex items-center gap-2 pr-4 border-r border-[#E2E0D8]">
+        <div className="paper-card relative rounded-2xl px-4 py-3 flex items-center gap-4 border border-[#E2E0D8] shadow-xs w-fit">
+          <span className="pcb-mounting-hole absolute top-1.5 left-1.5 opacity-75" aria-hidden="true" />
+          <span className="pcb-mounting-hole absolute bottom-1.5 right-1.5 opacity-75" aria-hidden="true" />
+
+          {/* Recessed OLED / 7-Segment Hardware Clock Readout */}
+          <div className="oled-display rounded-xl px-3.5 py-2 flex items-center gap-2.5">
             <div className="flex items-baseline font-mono-num leading-none">
-              <span className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1C1C1E]">
+              <span className="oled-digit text-3xl sm:text-4xl font-bold tracking-tight">
                 {hoursStr}
               </span>
-              <span className="text-2xl sm:text-3xl font-bold text-[#0A5386] mx-0.5 animate-pulse">
+              <span className="oled-digit text-2xl sm:text-3xl font-bold mx-0.5 animate-pulse">
                 :
               </span>
-              <span className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1C1C1E]">
+              <span className="oled-digit text-3xl sm:text-4xl font-bold tracking-tight">
                 {minsStr}
               </span>
             </div>
             <div className="flex flex-col items-start justify-between h-8">
-              <span className="px-1.5 py-0.5 rounded-md bg-[#0A5386]/10 text-[#0A5386] text-[10px] font-bold font-mono-num leading-none">
+              <span className="px-1.5 py-0.5 rounded-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] font-bold font-mono-num leading-none">
                 {secsStr}
               </span>
-              <span className="text-[10px] font-bold tracking-wider text-[#8E8E93] leading-none pl-0.5">
+              <span className="text-[10px] font-bold font-mono-num tracking-wider text-emerald-400/80 leading-none pl-0.5">
                 {periodStr}
               </span>
             </div>
           </div>
 
           {/* Date & Desk Greeting */}
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-              <span className="text-xs font-bold uppercase tracking-wider text-[#0A5386]">
+          <div className="min-w-0 pr-1">
+            <div className="flex items-center gap-2">
+              <span className="pcb-led pcb-led-green" title="System Power ON" />
+              <span className="pcb-silkscreen text-[10px] font-bold text-[#0A5386]">
                 {weekday}
               </span>
-              <span className="text-xs font-medium text-[#8E8E93]">· {dateLabel}</span>
+              <span className="text-xs font-mono-num font-medium text-[#8E8E93]">· {dateLabel}</span>
             </div>
-            <h1 className="mt-0.5 text-sm sm:text-base font-semibold text-[#1C1C1E] truncate">
+            <h1 className="mt-1 text-sm sm:text-base font-semibold text-[#1C1C1E] truncate">
               {greeting}, {myName}
             </h1>
           </div>
@@ -141,44 +146,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => onNavigate('projects')}
             className="ios-press inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#0A5386] hover:bg-[#0C64A1] text-white rounded-xl shadow-[0_4px_12px_rgba(10,83,134,0.32)]"
           >
-            <FolderPlus className="w-3.5 h-3.5" />
+            <CircuitBoard className="w-3.5 h-3.5" />
             Projects
           </button>
         </div>
       </div>
 
-      {/* LDOI Signature Widget Strip */}
+      {/* LDOI Signature Hardware Module Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-        <div className="paper-card rounded-2xl p-4 flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#0A5386] text-white flex items-center justify-center shrink-0">
-            <CheckSquare className="w-5 h-5" />
+        <div className="paper-card relative rounded-2xl p-4 flex items-center gap-3.5">
+          <span className="pcb-mounting-hole absolute top-2 right-2 opacity-65" aria-hidden="true" />
+          <div className="w-10 h-10 rounded-xl bg-[#0A5386] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <Cpu className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-[11px] font-semibold text-[#8E8E93]">My Tasks</div>
+            <div className="pcb-silkscreen text-[10px] font-semibold text-[#8E8E93]">
+              CH-01 · My Tasks
+            </div>
             <div className="text-xl font-bold font-mono-num text-[#1C1C1E]">
               {myPendingTasks.length}
             </div>
           </div>
         </div>
 
-        <div className="paper-card rounded-2xl p-4 flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#254454] text-white flex items-center justify-center shrink-0">
-            <FolderPlus className="w-5 h-5" />
+        <div className="paper-card relative rounded-2xl p-4 flex items-center gap-3.5">
+          <span className="pcb-mounting-hole absolute top-2 right-2 opacity-65" aria-hidden="true" />
+          <div className="w-10 h-10 rounded-xl bg-[#254454] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <CircuitBoard className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-[11px] font-semibold text-[#8E8E93]">Active Builds</div>
+            <div className="pcb-silkscreen text-[10px] font-semibold text-[#8E8E93]">
+              CH-02 · Active Builds
+            </div>
             <div className="text-xl font-bold font-mono-num text-[#1C1C1E]">
               {activeProjects.length}
             </div>
           </div>
         </div>
 
-        <div className="paper-card rounded-2xl p-4 flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#1B5E5A] text-white flex items-center justify-center shrink-0">
+        <div className="paper-card relative rounded-2xl p-4 flex items-center gap-3.5">
+          <span className="pcb-mounting-hole absolute top-2 right-2 opacity-65" aria-hidden="true" />
+          <div className="w-10 h-10 rounded-xl bg-[#1B5E5A] text-white flex items-center justify-center shrink-0 shadow-xs">
             <IndianRupee className="w-5 h-5" />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-[#8E8E93]">Active Quotes</div>
+            <div className="pcb-silkscreen text-[10px] font-semibold text-[#8E8E93]">
+              CH-03 · Active Quotes
+            </div>
             <div className="text-lg font-bold font-mono-num text-[#1C1C1E] truncate">
               {formatInr(activeProjects.reduce((sum, p) => sum + p.quotedAmountInr, 0))}
             </div>
@@ -270,7 +284,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <span className="w-7 h-7 rounded-lg bg-[#8B1E1E] text-white flex items-center justify-center">
-                <CalendarClock className="w-4 h-4" />
+                <Timer className="w-4 h-4" />
               </span>
               <h2 className="text-sm font-bold text-[#1C1C1E]">
                 Deadline Monitor
