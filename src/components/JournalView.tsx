@@ -3,7 +3,6 @@ import { ArrowLeft, BookOpen, Check, Plus, Search, Trash2, X } from 'lucide-reac
 import { JOURNAL_TAGS, formatDateShort } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
 import type { JournalEntry, JournalKind } from '../types';
-import { AnimatedDeleteButton } from './AnimatedDeleteButton';
 import { ConfirmModal } from './ConfirmModal';
 
 const BOOK_COLORS = ['#0A5386', '#254454', '#133F47', '#8B1E1E', '#1B5E5A', '#2F333C'];
@@ -42,7 +41,6 @@ export const JournalView: React.FC = () => {
     name: string;
     pageIds: string[];
   } | null>(null);
-  const [deleteMode, setDeleteMode] = useState(false);
   const [openingBook, setOpeningBook] = useState<{
     name: string;
     color: string;
@@ -232,7 +230,6 @@ export const JournalView: React.FC = () => {
     if (!deleteBookTarget) return;
     const { name: bookName, pageIds } = deleteBookTarget;
     setDeleteBookTarget(null);
-    setDeleteMode(false);
     for (const id of pageIds) {
       await deleteJournalEntry(id);
     }
@@ -328,26 +325,9 @@ export const JournalView: React.FC = () => {
               />
             </div>
 
-            {deleteMode ? (
-              <button
-                type="button"
-                onClick={() => setDeleteMode(false)}
-                className="ios-press px-3 py-1.5 text-xs font-semibold bg-[#8B1E1E] text-white rounded-full shrink-0"
-              >
-                Done Deleting
-              </button>
-            ) : (
-              <AnimatedDeleteButton
-                size="sm"
-                onClick={() => setDeleteMode(true)}
-                title="Delete a book"
-              />
-            )}
-
             <button
               type="button"
               onClick={() => {
-                setDeleteMode(false);
                 setNewBookInput('');
                 setNewBookFirstPage('');
                 setNewBookColor(BOOK_COLORS[books.length % BOOK_COLORS.length]);
@@ -360,19 +340,6 @@ export const JournalView: React.FC = () => {
             </button>
           </div>
         </div>
-
-        {deleteMode && (
-          <div className="px-4 py-2 rounded-xl bg-[#8B1E1E]/10 border border-[#8B1E1E]/25 text-xs font-medium text-[#DC2626] flex items-center justify-between">
-            <span>Click any book on the shelf to delete it.</span>
-            <button
-              type="button"
-              onClick={() => setDeleteMode(false)}
-              className="text-xs font-semibold underline"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
 
         {shelfRows.length === 0 ? (
           <div className="pt-8">
@@ -392,19 +359,8 @@ export const JournalView: React.FC = () => {
                       <div key={book.name} className="group relative">
                         <button
                           type="button"
-                          onClick={(e) => {
-                            if (deleteMode) {
-                              handleDeleteBook(
-                                book.name,
-                                pages.map((p) => p.id)
-                              );
-                              return;
-                            }
-                            triggerOpenBook(book, pages[0]?.id ?? null, e);
-                          }}
-                          className={`ios-press relative text-left focus:outline-none block ${
-                            deleteMode ? 'ring-2 ring-[#DC2626]/70 rounded-lg' : ''
-                          }`}
+                          onClick={(e) => triggerOpenBook(book, pages[0]?.id ?? null, e)}
+                          className="ios-press relative text-left focus:outline-none block"
                         >
                           <div className="absolute -bottom-1 inset-x-1 h-2.5 bg-black/45 blur-[4px] rounded-full transition-all duration-200 group-hover:scale-x-90 group-hover:opacity-60" />
 
@@ -545,9 +501,8 @@ export const JournalView: React.FC = () => {
                           type="button"
                           onClick={() => setNewBookColor(c)}
                           style={{ backgroundColor: c }}
-                          className={`w-7 h-7 rounded-full flex items-center justify-center text-white transition-transform ${
-                            newBookColor === c ? 'scale-110 ring-2 ring-offset-2 ring-[#0A5386]' : 'opacity-80 hover:opacity-100'
-                          }`}
+                          className={`w-7 h-7 rounded-full flex items-center justify-center text-white transition-transform ${newBookColor === c ? 'scale-110 ring-2 ring-offset-2 ring-[#0A5386]' : 'opacity-80 hover:opacity-100'
+                            }`}
                         >
                           {newBookColor === c && <Check className="w-3.5 h-3.5" />}
                         </button>
@@ -555,11 +510,10 @@ export const JournalView: React.FC = () => {
 
                       <label
                         title="Custom Color Wheel"
-                        className={`relative w-7 h-7 rounded-full cursor-pointer transition-transform flex items-center justify-center ${
-                          !BOOK_COLORS.includes(newBookColor)
-                            ? 'scale-110 ring-2 ring-offset-2 ring-[#0A5386]'
-                            : 'hover:scale-105'
-                        }`}
+                        className={`relative w-7 h-7 rounded-full cursor-pointer transition-transform flex items-center justify-center ${!BOOK_COLORS.includes(newBookColor)
+                          ? 'scale-110 ring-2 ring-offset-2 ring-[#0A5386]'
+                          : 'hover:scale-105'
+                          }`}
                         style={{
                           background:
                             'conic-gradient(from 0deg, #ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444)',
@@ -630,11 +584,10 @@ export const JournalView: React.FC = () => {
           title="Delete Book"
           message={
             deleteBookTarget
-              ? `Delete "${deleteBookTarget.name}" and its ${
-                  deleteBookTarget.pageIds.length === 1
-                    ? '1 page'
-                    : `${deleteBookTarget.pageIds.length} pages`
-                } from the shelf?`
+              ? `Delete "${deleteBookTarget.name}" and its ${deleteBookTarget.pageIds.length === 1
+                ? '1 page'
+                : `${deleteBookTarget.pageIds.length} pages`
+              } from the shelf?`
               : ''
           }
           confirmLabel="Delete Book"
@@ -667,8 +620,8 @@ export const JournalView: React.FC = () => {
                   stage === 'start'
                     ? 'rgba(0, 0, 0, 0)'
                     : stage === 'zoom'
-                    ? 'rgba(0, 0, 0, 0.12)'
-                    : 'rgba(0, 0, 0, 0.38)',
+                      ? 'rgba(0, 0, 0, 0.12)'
+                      : 'rgba(0, 0, 0, 0.38)',
                 backdropFilter: stage === 'start' ? 'none' : 'blur(6px)',
               }}
             >
@@ -799,8 +752,8 @@ export const JournalView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <AnimatedDeleteButton
-            size="sm"
+          <button
+            type="button"
             onClick={() =>
               handleDeleteBook(
                 openBookName,
@@ -810,7 +763,10 @@ export const JournalView: React.FC = () => {
               )
             }
             title={`Delete ${openBookName}`}
-          />
+            className="ios-press p-1.5 rounded-lg bg-white border border-[#E4E2DC] hover:border-[#DC2626] text-[#71717A] hover:text-[#DC2626]"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
           <button
             type="button"
             onClick={() => handleCreatePage('Idea')}
@@ -854,11 +810,10 @@ export const JournalView: React.FC = () => {
                     key={k}
                     type="button"
                     onClick={() => setKindFilter(k)}
-                    className={`px-2 py-1 text-[11px] font-medium rounded border ${
-                      kindFilter === k
-                        ? 'bg-[#0A5386] text-white border-[#0A5386]'
-                        : 'bg-white text-[#52525B] border-[#E4E2DC]'
-                    }`}
+                    className={`px-2 py-1 text-[11px] font-medium rounded border ${kindFilter === k
+                      ? 'bg-[#0A5386] text-white border-[#0A5386]'
+                      : 'bg-white text-[#52525B] border-[#E4E2DC]'
+                      }`}
                   >
                     {k}
                   </button>
@@ -879,11 +834,10 @@ export const JournalView: React.FC = () => {
                       key={entry.id}
                       type="button"
                       onClick={() => setSelectedId(entry.id)}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                        selected
-                          ? 'bg-white border-[#0A5386] shadow-2xs'
-                          : 'bg-white/70 border-[#E4E2DC] hover:bg-white'
-                      }`}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${selected
+                        ? 'bg-white border-[#0A5386] shadow-2xs'
+                        : 'bg-white/70 border-[#E4E2DC] hover:bg-white'
+                        }`}
                     >
                       <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider">
                         <span
@@ -931,10 +885,10 @@ export const JournalView: React.FC = () => {
                   <div className="flex items-center gap-2 shrink-0">
                     {((incomingTyping && incomingTyping.author !== currentUser?.name) ||
                       (incomingTitleTyping && incomingTitleTyping.author !== currentUser?.name)) && (
-                      <span className="px-2 py-1 text-[11px] font-medium bg-[#0A5386]/15 text-[#5FA8E0] rounded">
-                        {(incomingTyping?.author || incomingTitleTyping?.author)} is typing...
-                      </span>
-                    )}
+                        <span className="px-2 py-1 text-[11px] font-medium bg-[#0A5386]/15 text-[#5FA8E0] rounded">
+                          {(incomingTyping?.author || incomingTitleTyping?.author)} is typing...
+                        </span>
+                      )}
                     <button
                       type="button"
                       onClick={() => deleteJournalEntry(activeEntry.id)}
@@ -983,11 +937,10 @@ export const JournalView: React.FC = () => {
                           key={tag}
                           type="button"
                           onClick={() => toggleTag(tag)}
-                          className={`px-2 py-0.5 text-[10px] font-medium rounded border ${
-                            active
-                              ? 'bg-[#0A5386] text-white border-[#0A5386]'
-                              : 'bg-white text-[#52525B] border-[#E4E2DC]'
-                          }`}
+                          className={`px-2 py-0.5 text-[10px] font-medium rounded border ${active
+                            ? 'bg-[#0A5386] text-white border-[#0A5386]'
+                            : 'bg-white text-[#52525B] border-[#E4E2DC]'
+                            }`}
                         >
                           {tag}
                         </button>
@@ -1014,11 +967,10 @@ export const JournalView: React.FC = () => {
         title="Delete Book"
         message={
           deleteBookTarget
-            ? `Delete "${deleteBookTarget.name}" and its ${
-                deleteBookTarget.pageIds.length === 1
-                  ? '1 page'
-                  : `${deleteBookTarget.pageIds.length} pages`
-              } from the shelf?`
+            ? `Delete "${deleteBookTarget.name}" and its ${deleteBookTarget.pageIds.length === 1
+              ? '1 page'
+              : `${deleteBookTarget.pageIds.length} pages`
+            } from the shelf?`
             : ''
         }
         confirmLabel="Delete Book"
