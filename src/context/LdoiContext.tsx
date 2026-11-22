@@ -6,6 +6,7 @@ import type {
   Enquiry,
   ExpenseItem,
   JournalEntry,
+  LiveCursorState,
   LiveTypingState,
   MemberName,
   Project,
@@ -57,11 +58,13 @@ interface LdoiContextValue extends LdoiState {
   syncMode: 'supabase' | 'local';
   onlineMembers: MemberName[];
   liveTypingMap: Record<string, LiveTypingState>;
+  liveCursorsMap: Record<string, LiveCursorState>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (email: string, password: string, memberName: MemberName) => Promise<{ error?: string }>;
   quickLocalSignIn: (memberName: MemberName) => void;
   signOut: () => Promise<void>;
   broadcastTyping: (targetKey: string, text: string) => void;
+  broadcastCursor: (projectId: string, x: number, y: number) => void;
 
   createProject: (input: Omit<Project, 'id' | 'createdBy' | 'createdAt' | 'updatedAt' | 'liveNotebookText'>) => Promise<Project>;
   updateProject: (id: string, patch: Partial<Project>) => Promise<void>;
@@ -130,6 +133,7 @@ export const LdoiProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authLoading, setAuthLoading] = useState<boolean>(syncMode === 'supabase');
   const [onlineMembers, setOnlineMembers] = useState<MemberName[]>([]);
   const [liveTypingMap, setLiveTypingMap] = useState<Record<string, LiveTypingState>>({});
+  const [liveCursorsMap, setLiveCursorsMap] = useState<Record<string, LiveCursorState>>({});
 
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const supabaseChannelRef = useRef<RealtimeChannel | null>(null);
@@ -314,6 +318,9 @@ export const LdoiProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else if (msg.type === 'LIVE_TYPING' && msg.payload) {
           const p = msg.payload as LiveTypingState;
           setLiveTypingMap((prev) => ({ ...prev, [p.targetKey]: p }));
+        } else if (msg.type === 'LIVE_CURSOR' && msg.payload) {
+          const c = msg.payload as LiveCursorState;
+          setLiveCursorsMap((prev) => ({ ...prev, [`${c.projectId}:${c.member}`]: c }));
         } else if (msg.type === 'PRESENCE_PING' && msg.member) {
           setOnlineMembers((prev) => (prev.includes(msg.member) ? prev : [...prev, msg.member]));
           bc.postMessage({ type: 'PRESENCE_PONG', member: currentUser.name });
@@ -362,6 +369,11 @@ export const LdoiProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!p?.targetKey) return;
         setLiveTypingMap((prev) => ({ ...prev, [p.targetKey]: p }));
       })
+      .on('broadcast', { event: 'live-cursor' }, ({ payload }) => {
+        const c = payload as LiveCursorState;
+        if (!c?.projectId || !c?.member) return;
+        setLiveCursorsMap((prev) => ({ ...prev, [`${c.projectId}:${c.member}`]: c }));
+      })
       .on('postgres_changes', { event: '*', schema: 'public' }, () => {
         fetchSupabaseAll();
       })
@@ -395,6 +407,18 @@ export const LdoiProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         return changed ? next : prev;
       });
+      setLiveCursorsMap((prev) => {
+        let changed = false;
+        const next: Record<string, LiveCursorState> = {};
+        for (const [k, v] of Object.entries(prev)) {
+          if (now - v.updatedAt < 6000) {
+            next[k] = v;
+          } else {
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
     }, 1200);
     return () => clearInterval(timer);
   }, []);
@@ -414,6 +438,29 @@ export const LdoiProvider: React.FC<{ children: React.ReactNode }> = ({ children
         supabaseChannelRef.current?.send({
           type: 'broadcast',
           event: 'live-typing',
+          payload,
+        });
+      }
+    },
+    [currentUser, syncMode]
+  );
+
+  const broadcastCursor = useCallback(
+    (projectId: string, x: number, y: number) => {
+      if (!currentUser) return;
+      const payload: LiveCursorState = {
+        projectId,
+        member: currentUser.name,
+        x,
+        y,
+        updatedAt: Date.now(),
+      };
+      if (syncMode === 'local') {
+        broadcastChannelRef.current?.postMessage({ type: 'LIVE_CURSOR', payload });
+      } else {
+        supabaseChannelRef.current?.send({
+          type: 'broadcast',
+          event: 'live-cursor',
           payload,
         });
       }
@@ -972,11 +1019,13 @@ export const LdoiProvider: React.FC<{ children: React.ReactNode }> = ({ children
       syncMode,
       onlineMembers,
       liveTypingMap,
+      liveCursorsMap,
       signIn,
       signUp,
       quickLocalSignIn,
       signOut,
       broadcastTyping,
+      broadcastCursor,
       createProject,
       updateProject,
       deleteProject,
@@ -1007,11 +1056,13 @@ export const LdoiProvider: React.FC<{ children: React.ReactNode }> = ({ children
       syncMode,
       onlineMembers,
       liveTypingMap,
+      liveCursorsMap,
       signIn,
       signUp,
       quickLocalSignIn,
       signOut,
       broadcastTyping,
+      broadcastCursor,
       createProject,
       updateProject,
       deleteProject,

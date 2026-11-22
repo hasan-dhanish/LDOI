@@ -130,6 +130,14 @@ export interface LiveTypingState {
   updatedAt: number;
 }
 
+export interface LiveCursorState {
+  projectId: string;
+  member: MemberName;
+  x: number;
+  y: number;
+  updatedAt: number;
+}
+
 export type ActiveTab =
   | 'dashboard'
   | 'projects'

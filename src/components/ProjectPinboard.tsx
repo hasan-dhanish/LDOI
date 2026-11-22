@@ -19,6 +19,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
+import { getMemberColor } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
 import {
   loadBoardPositions,
@@ -241,6 +242,9 @@ const FloatingChecklistPin: React.FC<{
 
 export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => {
   const {
+    currentUser,
+    liveCursorsMap,
+    broadcastCursor,
     projectNotes,
     documents,
     addProjectNote,
@@ -249,6 +253,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     uploadDocument,
     deleteDocument,
   } = useLdoi();
+  const lastCursorSentRef = useRef<number>(0);
 
   const [positions, setPositions] = useState<BoardPositions>(() =>
     loadBoardPositions(project.id)
@@ -517,6 +522,21 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     setPan({ x: 0, y: 0 });
   };
 
+  const handleCanvasPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const now = Date.now();
+    if (now - lastCursorSentRef.current < 45) return;
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    lastCursorSentRef.current = now;
+    const wx = Math.round((e.clientX - rect.left - panRef.current.x) / zoomRef.current);
+    const wy = Math.round((e.clientY - rect.top - panRef.current.y) / zoomRef.current);
+    broadcastCursor(project.id, wx, wy);
+  };
+
+  const remoteCursors = Object.values(liveCursorsMap).filter(
+    (c) => c.projectId === project.id && c.member !== currentUser?.name
+  );
+
   const totalPins = projectDocs.length + pinnedPages.length + pinnedChecklists.length;
 
   return (
@@ -663,6 +683,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
       <div
         ref={viewportRef}
         onPointerDown={startCanvasPan}
+        onPointerMove={handleCanvasPointerMove}
         className={`flex-1 overflow-hidden relative select-none ${
           isPanning ? 'cursor-grabbing' : 'cursor-grab'
         }`}
@@ -803,6 +824,46 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                 onUpdate={(content) => updateProjectNote(note.id, content)}
                 onDelete={() => queueDelete('note', note.id, titlePreview)}
               />
+            );
+          })}
+
+          {/* Real-Time Multiplayer Cursors */}
+          {remoteCursors.map((cursor) => {
+            const color = getMemberColor(cursor.member);
+            return (
+              <div
+                key={cursor.member}
+                style={{
+                  left: cursor.x,
+                  top: cursor.y,
+                  transform: `scale(${1 / zoom})`,
+                  transformOrigin: '0 0',
+                  transition: 'left 80ms linear, top 80ms linear',
+                }}
+                className="pointer-events-none absolute z-50"
+              >
+                <svg
+                  width="20"
+                  height="22"
+                  viewBox="0 0 20 22"
+                  fill="none"
+                  className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.28)]"
+                >
+                  <path
+                    d="M2.5 1.5L17.5 10.5L10.2 12.6L6.8 19.5L2.5 1.5Z"
+                    fill={color}
+                    stroke="#FFFFFF"
+                    strokeWidth="1.75"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <div
+                  style={{ backgroundColor: color }}
+                  className="ml-3.5 -mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-white whitespace-nowrap shadow-md"
+                >
+                  {cursor.member}
+                </div>
+              </div>
             );
           })}
         </div>
