@@ -503,7 +503,7 @@ export const JournalView: React.FC = () => {
                     );
                   })}
                 </div>
-                <div className="book-shelf-ledge w-full relative z-0" />
+                <div className="book-shelf-ledge w-full relative z-0 mt-2.5" />
               </div>
             ))}
           </div>
