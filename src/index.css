@@ -103,14 +103,15 @@
 }
 
 .dark-theme .ruled-paper {
-  background-color: #1b1d24;
-  background-image: linear-gradient(to bottom, transparent 30px, #2e323d 31px, transparent 32px);
+  background-color: #fcfbf8;
+  background-image: linear-gradient(to bottom, transparent 30px, #e5dfd1 31px, transparent 32px);
   background-attachment: local;
-  color: #f4f4f5;
+  color: #18181b;
 }
 
 .dark-theme .notebook-title-input {
   background-color: transparent !important;
+  color: #18181b !important;
 }
 
 /* Apple Books 3D Shelf Ledge */
@@ -366,55 +367,64 @@
 }
 
 .dark-theme .notebook-pages-pane {
-  background-color: #16181f;
-  border-color: #272b36;
+  background-color: #f5f1e7;
+  border-color: #d6d0c2;
+  color: #18181b;
 }
 
 .dark-theme .notebook-editor-pane {
-  background-color: #1c1f28;
+  background-color: #fcfbf8;
+  color: #18181b;
+}
+
+.dark-theme .notebook-editor-pane input,
+.dark-theme .notebook-editor-pane select {
+  color: #18181b;
+}
+
+.dark-theme .notebook-editor-pane select {
+  background-color: #ffffff;
+  border-color: #e4e2dc;
 }
 
 .dark-theme .notebook-page-item {
-  background-color: rgba(34, 38, 49, 0.75);
-  border-color: #2c3140;
+  background-color: rgba(255, 255, 255, 0.78);
+  border-color: #e4e2dc;
+  color: #18181b;
 }
 
 .dark-theme .notebook-page-item:hover {
-  background-color: #262b38;
+  background-color: #ffffff;
 }
 
 .dark-theme .notebook-page-item-active {
-  background-color: #232a3a;
-  border-color: #38bdf8;
+  background-color: #ffffff;
+  border-color: #0a5386;
+  color: #18181b;
 }
 
 .dark-theme .notebook-toolbar {
-  background-color: #242834;
-  border-color: #323848;
+  background-color: #efeae0;
+  border-color: #ded8ca;
 }
 
 .dark-theme .notebook-tool-btn {
-  color: #e4e4e7;
+  color: #18181b;
 }
 
 .dark-theme .notebook-tool-btn:hover {
-  background-color: #323848;
+  background-color: #ffffff;
 }
 
 .dark-theme .ruled-paper {
-  background-color: #1e222c;
-  background-image: linear-gradient(
-    to bottom,
-    transparent 30px,
-    rgba(255, 255, 255, 0.06) 31px,
-    transparent 32px
-  );
-  color: #f4f4f5;
-  border-color: #2c3140;
+  background-color: #fcfbf8;
+  background-image: linear-gradient(to bottom, transparent 30px, #e5dfd1 31px, transparent 32px);
+  color: #18181b;
+  border-color: #e4e2dc;
 }
 
 .dark-theme .notebook-editor hr {
-  border-top-color: rgba(255, 255, 255, 0.14);
+  border-top-color: rgba(140, 128, 110, 0.35);
 }
 
 /* Frosted Glassmorphic Card */
