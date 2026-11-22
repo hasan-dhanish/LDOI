@@ -16,7 +16,6 @@ export function parseRequirementCheckpoints(raw: string): RequirementCheckpoint[
       return [];
     }
   }
-  // Backward compatibility for plain-text requirements
   return raw
     .split('\n')
     .map((line) => line.trim())
@@ -30,6 +29,75 @@ export function parseRequirementCheckpoints(raw: string): RequirementCheckpoint[
 
 export function serializeRequirementCheckpoints(items: RequirementCheckpoint[]): string {
   return `${CHECKPOINTS_PREFIX}${JSON.stringify(items)}`;
+}
+
+export interface PinPageData {
+  title: string;
+  bodyHtml: string;
+  checklist: RequirementCheckpoint[];
+  bgColor?: string;
+}
+
+const PIN_PAGE_JSON_PREFIX = '__JSON__:';
+
+export function parsePinPageContent(rawNoteContent: string): PinPageData {
+  const afterTag = rawNoteContent.startsWith('[PIN_PAGE]')
+    ? rawNoteContent.slice('[PIN_PAGE]'.length)
+    : rawNoteContent;
+
+  if (afterTag.startsWith(PIN_PAGE_JSON_PREFIX)) {
+    try {
+      const parsed = JSON.parse(afterTag.slice(PIN_PAGE_JSON_PREFIX.length));
+      return {
+        title: typeof parsed.title === 'string' ? parsed.title : '',
+        bodyHtml: typeof parsed.bodyHtml === 'string' ? parsed.bodyHtml : '',
+        checklist: Array.isArray(parsed.checklist) ? parsed.checklist : [],
+        bgColor: typeof parsed.bgColor === 'string' ? parsed.bgColor : undefined,
+      };
+    } catch {
+      // fall through
+    }
+  }
+
+  const newlineIdx = afterTag.indexOf('\n');
+  const title = newlineIdx === -1 ? afterTag : afterTag.slice(0, newlineIdx);
+  const body = newlineIdx === -1 ? '' : afterTag.slice(newlineIdx + 1);
+  return {
+    title,
+    bodyHtml: body.replace(/\n/g, '<br />'),
+    checklist: [],
+  };
+}
+
+export function serializePinPageContent(data: PinPageData): string {
+  return `[PIN_PAGE]${PIN_PAGE_JSON_PREFIX}${JSON.stringify(data)}`;
+}
+
+export type ConnectorStyle = 'arrow' | 'line' | 'dashed' | 'dotted';
+
+export interface BoardConnector {
+  id: string;
+  fromId: string;
+  toId: string;
+  style: ConnectorStyle;
+  color: string;
+}
+
+export function loadBoardConnectors(projectId: string): BoardConnector[] {
+  try {
+    const raw = localStorage.getItem(`ldoi_board_conn_${projectId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveBoardConnectors(projectId: string, connectors: BoardConnector[]): void {
+  try {
+    localStorage.setItem(`ldoi_board_conn_${projectId}`, JSON.stringify(connectors));
+  } catch {
+    // ignore
+  }
 }
 
 export interface BoardPos {

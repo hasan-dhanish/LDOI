@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ArrowUpRight,
+  Bold,
   CheckSquare,
   Crosshair,
   Download,
@@ -7,6 +9,8 @@ import {
   FileText,
   GripHorizontal,
   Image as ImageIcon,
+  Italic,
+  List,
   ListChecks,
   Maximize2,
   Minus,
@@ -15,6 +19,7 @@ import {
   Square,
   StickyNote,
   Trash2,
+  Underline,
   Undo2,
   Upload,
   X,
@@ -22,17 +27,32 @@ import {
 import { getMemberColor } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
 import {
+  loadBoardConnectors,
   loadBoardPositions,
-  parseRequirementCheckpoints,
+  parsePinPageContent,
+  saveBoardConnectors,
   saveBoardPositions,
-  serializeRequirementCheckpoints,
+  serializePinPageContent,
+  type BoardConnector,
   type BoardPositions,
+  type ConnectorStyle,
+  type PinPageData,
 } from '../lib/pinboard';
 import type { Project, ProjectNote } from '../types';
 
 interface ProjectPinboardProps {
   project: Project;
 }
+
+const PAGE_PAPER_COLORS = [
+  { label: 'Default', hex: '' },
+  { label: 'Warm Cream', hex: '#FEF3C7' },
+  { label: 'Sky Tint', hex: '#E0F2FE' },
+  { label: 'Mint Tint', hex: '#DCFCE7' },
+  { label: 'Rose Tint', hex: '#FCE7F3' },
+];
+
+const CONNECTOR_COLORS = ['#0A5386', '#18181B', '#8B1E1E', '#133F47'];
 
 function getFileBadge(name: string): string {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
@@ -45,197 +65,339 @@ function getFileBadge(name: string): string {
 const FloatingPagePin: React.FC<{
   note: ProjectNote;
   pos: { x: number; y: number };
+  connectActive: boolean;
+  isConnectSource: boolean;
+  onSelectForConnect: () => void;
   onDragStart: (e: React.PointerEvent) => void;
   onUpdate: (content: string) => void;
   onDelete: () => void;
-}> = ({ note, pos, onDragStart, onUpdate, onDelete }) => {
-  const raw = note.content.slice('[PIN_PAGE]'.length);
-  const newlineIdx = raw.indexOf('\n');
-  const initialHeading = newlineIdx === -1 ? raw : raw.slice(0, newlineIdx);
-  const initialBody = newlineIdx === -1 ? '' : raw.slice(newlineIdx + 1);
+}> = ({
+  note,
+  pos,
+  connectActive,
+  isConnectSource,
+  onSelectForConnect,
+  onDragStart,
+  onUpdate,
+  onDelete,
+}) => {
+  const initialData = parsePinPageContent(note.content);
+  const [title, setTitle] = useState(initialData.title);
+  const [checklist, setChecklist] = useState(initialData.checklist);
+  const [bgColor, setBgColor] = useState(initialData.bgColor ?? '');
+  const [showChecklistInput, setShowChecklistInput] = useState(initialData.checklist.length > 0);
+  const [newCheckItem, setNewCheckItem] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
 
-  const [heading, setHeading] = useState(initialHeading);
-  const [body, setBody] = useState(initialBody);
+  const editorRef = useRef<HTMLDivElement | null>(null);
+  const savedRangeRef = useRef<Range | null>(null);
   const saveTimerRef = useRef<number | null>(null);
 
-  const scheduleSave = (nextHeading: string, nextBody: string) => {
+  useEffect(() => {
+    if (editorRef.current && document.activeElement !== editorRef.current) {
+      editorRef.current.innerHTML = initialData.bodyHtml;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note.id]);
+
+  const flushSave = (nextPatch?: Partial<PinPageData>) => {
+    const payload: PinPageData = {
+      title: nextPatch?.title ?? title,
+      bodyHtml: nextPatch?.bodyHtml ?? editorRef.current?.innerHTML ?? initialData.bodyHtml,
+      checklist: nextPatch?.checklist ?? checklist,
+      bgColor: nextPatch?.bgColor !== undefined ? nextPatch.bgColor : bgColor || undefined,
+    };
+    onUpdate(serializePinPageContent(payload));
+  };
+
+  const scheduleSave = (nextPatch?: Partial<PinPageData>) => {
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = window.setTimeout(() => {
-      onUpdate(`[PIN_PAGE]${nextHeading}\n${nextBody}`);
-    }, 250);
+      flushSave(nextPatch);
+    }, 220);
   };
+
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  };
+
+  const execFormat = (command: string, value?: string) => {
+    editorRef.current?.focus();
+    if (savedRangeRef.current) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedRangeRef.current);
+      }
+    }
+    try {
+      document.execCommand('styleWithCSS', false, 'true');
+    } catch {
+      // ignore
+    }
+    document.execCommand(command, false, value);
+    saveSelection();
+    if (editorRef.current) {
+      scheduleSave({ bodyHtml: editorRef.current.innerHTML });
+    }
+  };
+
+  const hasCustomTint = Boolean(bgColor);
 
   return (
     <div
-      style={{ left: pos.x, top: pos.y }}
-      className="group absolute w-[280px] floating-sheet rounded-xl p-4 select-none"
+      style={{
+        left: pos.x,
+        top: pos.y,
+        backgroundColor: hasCustomTint ? bgColor : undefined,
+      }}
+      onClick={(e) => {
+        if (connectActive) {
+          e.stopPropagation();
+          onSelectForConnect();
+        }
+      }}
+      onFocus={() => setIsFocused(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setIsFocused(false);
+        }
+      }}
+      className={`group absolute w-[300px] rounded-xl p-4 select-none transition-shadow ${
+        hasCustomTint
+          ? 'shadow-[0_14px_34px_rgba(24,24,27,0.14)] text-[#18181B]'
+          : 'floating-sheet'
+      } ${
+        isConnectSource
+          ? 'ring-2 ring-[#0A5386] ring-offset-2'
+          : connectActive
+          ? 'hover:ring-2 hover:ring-[#0A5386]/60 cursor-crosshair'
+          : ''
+      }`}
     >
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2 right-0 z-10 flex items-center gap-1">
+      {/* Hover / Focus Rich-Text & Color Mini-Toolbar */}
+      {!connectActive && (
         <div
-          onPointerDown={onDragStart}
-          title="Drag page"
-          className="w-6 h-6 rounded-full bg-white/90 border border-[#E4E2DC] text-[#52525B] flex items-center justify-center shadow-sm cursor-grab active:cursor-grabbing"
-        >
-          <GripHorizontal className="w-3.5 h-3.5" />
-        </div>
-        <button
-          type="button"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={onDelete}
-          title="Delete page"
-          className="w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-sm"
+          className={`transition-opacity absolute -top-9 left-0 right-0 z-20 flex items-center justify-between gap-1 ${
+            isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          }`}
         >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      <input
-        type="text"
-        value={heading}
-        onPointerDown={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          setHeading(e.target.value);
-          scheduleSave(e.target.value, body);
-        }}
-        placeholder="Page title..."
-        className="w-full text-sm font-bold text-[#18181B] bg-transparent focus:outline-none placeholder:text-[#A1A1AA]"
-      />
-      <textarea
-        rows={5}
-        value={body}
-        onPointerDown={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          setBody(e.target.value);
-          scheduleSave(heading, e.target.value);
-        }}
-        placeholder="Write notes..."
-        className="mt-1.5 w-full text-xs text-[#3F3F46] leading-relaxed bg-transparent focus:outline-none resize-none placeholder:text-[#A1A1AA]"
-      />
-    </div>
-  );
-};
-
-const FloatingChecklistPin: React.FC<{
-  note: ProjectNote;
-  pos: { x: number; y: number };
-  onDragStart: (e: React.PointerEvent) => void;
-  onUpdate: (content: string) => void;
-  onDelete: () => void;
-}> = ({ note, pos, onDragStart, onUpdate, onDelete }) => {
-  const raw = note.content.slice('[PIN_CHECKLIST]'.length);
-  const newlineIdx = raw.indexOf('\n');
-  const initialHeading = newlineIdx === -1 ? raw : raw.slice(0, newlineIdx);
-  const initialJson = newlineIdx === -1 ? '[]' : raw.slice(newlineIdx + 1);
-
-  const [heading, setHeading] = useState(initialHeading);
-  const [newItem, setNewItem] = useState('');
-  const items = parseRequirementCheckpoints(initialJson);
-
-  const saveAll = (nextHeading: string, nextItems: typeof items) => {
-    onUpdate(`[PIN_CHECKLIST]${nextHeading}\n${serializeRequirementCheckpoints(nextItems)}`);
-  };
-
-  return (
-    <div
-      style={{ left: pos.x, top: pos.y }}
-      className="group absolute w-[270px] floating-sheet rounded-xl p-4 select-none"
-    >
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2 right-0 z-10 flex items-center gap-1">
-        <div
-          onPointerDown={onDragStart}
-          title="Drag checklist"
-          className="w-6 h-6 rounded-full bg-white/90 border border-[#E4E2DC] text-[#52525B] flex items-center justify-center shadow-sm cursor-grab active:cursor-grabbing"
-        >
-          <GripHorizontal className="w-3.5 h-3.5" />
-        </div>
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={onDelete}
-          title="Delete checklist"
-          className="w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-sm"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      <input
-        type="text"
-        value={heading}
-        onPointerDown={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          setHeading(e.target.value);
-          saveAll(e.target.value, items);
-        }}
-        placeholder="Checklist title..."
-        className="w-full text-sm font-bold text-[#18181B] bg-transparent focus:outline-none placeholder:text-[#A1A1AA]"
-      />
-
-      <div className="mt-1.5 space-y-1">
-        {items.map((cp) => (
-          <div key={cp.id} className="flex items-start justify-between gap-1.5">
+          <div className="paper-card rounded-full px-2 py-1 shadow-lg border border-[#E4E2DC] flex items-center gap-0.5 backdrop-blur-md">
             <button
               type="button"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={() =>
-                saveAll(
-                  heading,
-                  items.map((c) => (c.id === cp.id ? { ...c, done: !c.done } : c))
-                )
-              }
-              className="flex items-start gap-2 text-left flex-1 min-w-0"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                execFormat('bold');
+              }}
+              title="Bold"
+              className="p-1 rounded-full hover:bg-black/5 text-[#18181B]"
             >
-              {cp.done ? (
-                <CheckSquare className="w-3.5 h-3.5 text-[#0A5386] shrink-0 mt-0.5" />
-              ) : (
-                <Square className="w-3.5 h-3.5 text-[#71717A] shrink-0 mt-0.5" />
-              )}
-              <span
-                className={`text-xs leading-snug ${
-                  cp.done ? 'line-through text-[#71717A]' : 'text-[#18181B]'
-                }`}
-              >
-                {cp.text}
-              </span>
+              <Bold className="w-3 h-3" />
             </button>
             <button
               type="button"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={() =>
-                saveAll(
-                  heading,
-                  items.filter((c) => c.id !== cp.id)
-                )
-              }
-              className="opacity-0 group-hover:opacity-100 text-[#A1A1AA] hover:text-[#DC2626] shrink-0"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                execFormat('italic');
+              }}
+              title="Italic"
+              className="p-1 rounded-full hover:bg-black/5 text-[#18181B]"
             >
-              <Trash2 className="w-3 h-3" />
+              <Italic className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                execFormat('underline');
+              }}
+              title="Underline"
+              className="p-1 rounded-full hover:bg-black/5 text-[#18181B]"
+            >
+              <Underline className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                execFormat('insertUnorderedList');
+              }}
+              title="Bullet List"
+              className="p-1 rounded-full hover:bg-black/5 text-[#18181B]"
+            >
+              <List className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setShowChecklistInput(true);
+              }}
+              title="Add Checklist Inside Page"
+              className="p-1 rounded-full hover:bg-black/5 text-[#0A5386]"
+            >
+              <ListChecks className="w-3 h-3" />
+            </button>
+
+            <div className="w-px h-3.5 bg-[#D6D0C2] mx-0.5" />
+
+            {PAGE_PAPER_COLORS.map((c) => (
+              <button
+                key={c.label}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setBgColor(c.hex);
+                  flushSave({ bgColor: c.hex || undefined });
+                }}
+                title={c.label}
+                style={{ backgroundColor: c.hex || '#FCFBF8' }}
+                className={`w-3 h-3 rounded-full border border-black/20 ${
+                  bgColor === c.hex ? 'ring-1 ring-offset-1 ring-[#0A5386]' : ''
+                }`}
+              />
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1">
+            <div
+              onPointerDown={onDragStart}
+              title="Drag page"
+              className="w-6 h-6 rounded-full bg-white/95 border border-[#E4E2DC] text-[#52525B] flex items-center justify-center shadow-sm cursor-grab active:cursor-grabbing"
+            >
+              <GripHorizontal className="w-3.5 h-3.5" />
+            </div>
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={onDelete}
+              title="Delete page"
+              className="w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-sm"
+            >
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!newItem.trim()) return;
-          saveAll(heading, [
-            ...items,
-            { id: `cp_${Date.now()}`, text: newItem.trim(), done: false },
-          ]);
-          setNewItem('');
+      {/* Editable Page Title */}
+      <input
+        type="text"
+        value={title}
+        disabled={connectActive}
+        onPointerDown={(e) => e.stopPropagation()}
+        onChange={(e) => {
+          setTitle(e.target.value);
+          scheduleSave({ title: e.target.value });
         }}
-        className="mt-2 flex items-center gap-1"
-      >
-        <input
-          type="text"
-          value={newItem}
+        placeholder="Page title..."
+        className={`w-full text-sm font-bold bg-transparent focus:outline-none placeholder:text-[#A1A1AA] ${
+          hasCustomTint ? '!text-[#18181B]' : 'text-[#18181B]'
+        }`}
+        style={hasCustomTint ? { backgroundColor: 'transparent', color: '#18181B' } : undefined}
+      />
+
+      {/* Rich-Text Body */}
+      <div
+        ref={editorRef}
+        contentEditable={!connectActive}
+        suppressContentEditableWarning
+        onPointerDown={(e) => {
+          if (!connectActive) e.stopPropagation();
+        }}
+        onMouseUp={saveSelection}
+        onKeyUp={saveSelection}
+        onInput={(e) => {
+          saveSelection();
+          scheduleSave({ bodyHtml: e.currentTarget.innerHTML });
+        }}
+        data-placeholder="Write notes..."
+        className={`notebook-editor mt-1.5 w-full min-h-[76px] text-xs leading-relaxed bg-transparent focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-[#A1A1AA] select-text ${
+          hasCustomTint ? 'text-[#27272A]' : 'text-[#3F3F46]'
+        }`}
+      />
+
+      {/* Built-In Checklist Inside the Page */}
+      {(showChecklistInput || checklist.length > 0) && (
+        <div
           onPointerDown={(e) => e.stopPropagation()}
-          onChange={(e) => setNewItem(e.target.value)}
-          placeholder="+ Add item..."
-          className="flex-1 text-xs bg-transparent focus:outline-none text-[#18181B] placeholder:text-[#A1A1AA]"
-        />
-      </form>
+          className="mt-2.5 pt-2 border-t border-black/10 space-y-1"
+        >
+          {checklist.map((cp) => (
+            <div key={cp.id} className="flex items-start justify-between gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = checklist.map((c) =>
+                    c.id === cp.id ? { ...c, done: !c.done } : c
+                  );
+                  setChecklist(next);
+                  flushSave({ checklist: next });
+                }}
+                className="flex items-start gap-1.5 text-left flex-1 min-w-0"
+              >
+                {cp.done ? (
+                  <CheckSquare className="w-3.5 h-3.5 text-[#0A5386] shrink-0 mt-0.5" />
+                ) : (
+                  <Square className="w-3.5 h-3.5 text-[#71717A] shrink-0 mt-0.5" />
+                )}
+                <span
+                  className={`text-xs leading-snug ${
+                    cp.done
+                      ? 'line-through text-[#71717A]'
+                      : hasCustomTint
+                      ? 'text-[#18181B]'
+                      : 'text-[#18181B]'
+                  }`}
+                >
+                  {cp.text}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = checklist.filter((c) => c.id !== cp.id);
+                  setChecklist(next);
+                  flushSave({ checklist: next });
+                }}
+                className="opacity-0 group-hover:opacity-100 text-[#A1A1AA] hover:text-[#DC2626] shrink-0"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+
+          {!connectActive && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newCheckItem.trim()) return;
+                const next = [
+                  ...checklist,
+                  { id: `cp_${Date.now()}`, text: newCheckItem.trim(), done: false },
+                ];
+                setChecklist(next);
+                setNewCheckItem('');
+                flushSave({ checklist: next });
+              }}
+              className="pt-0.5"
+            >
+              <input
+                type="text"
+                value={newCheckItem}
+                onChange={(e) => setNewCheckItem(e.target.value)}
+                placeholder="+ Add checklist item..."
+                className="w-full text-[11px] bg-transparent focus:outline-none placeholder:text-[#A1A1AA]"
+                style={hasCustomTint ? { backgroundColor: 'transparent', color: '#18181B' } : undefined}
+              />
+            </form>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -258,6 +420,15 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   const [positions, setPositions] = useState<BoardPositions>(() =>
     loadBoardPositions(project.id)
   );
+  const [connectors, setConnectors] = useState<BoardConnector[]>(() =>
+    loadBoardConnectors(project.id)
+  );
+  const [connectMode, setConnectMode] = useState(false);
+  const [connectStyle, setConnectStyle] = useState<ConnectorStyle>('arrow');
+  const [connectColor, setConnectColor] = useState('#0A5386');
+  const [connectFromId, setConnectFromId] = useState<string | null>(null);
+  const [mouseWorld, setMouseWorld] = useState<{ x: number; y: number } | null>(null);
+
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -313,9 +484,15 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setConnectMode(false);
+        setConnectFromId(null);
+      }
       if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z') return;
       const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) {
+        return;
+      }
       if (pendingDeletesRef.current.length > 0) {
         e.preventDefault();
         handleUndoDelete();
@@ -343,21 +520,61 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   const pinnedPages = projectNotes.filter(
     (n) => n.projectId === project.id && n.content.startsWith('[PIN_PAGE]') && !hiddenIds.has(n.id)
   );
-  const pinnedChecklists = projectNotes.filter(
-    (n) =>
-      n.projectId === project.id &&
-      n.content.startsWith('[PIN_CHECKLIST]') &&
-      !hiddenIds.has(n.id)
-  );
 
   const getPos = (cardId: string, fallbackIndex = 0): { x: number; y: number } => {
     if (positions[cardId]) return positions[cardId];
     const col = fallbackIndex % 4;
     const row = Math.floor(fallbackIndex / 4);
-    return { x: 80 + col * 300, y: 100 + row * 260 };
+    return { x: 80 + col * 320, y: 100 + row * 260 };
+  };
+
+  const getCardCenter = (cardId: string): { x: number; y: number } | null => {
+    const docIdx = projectDocs.findIndex((d) => `doc_${d.id}` === cardId);
+    if (docIdx !== -1) {
+      const doc = projectDocs[docIdx];
+      const p = getPos(cardId, docIdx);
+      const isImg = doc.mimeType.startsWith('image/');
+      return { x: p.x + (isImg ? 120 : 75), y: p.y + (isImg ? 95 : 55) };
+    }
+    const pageIdx = pinnedPages.findIndex((n) => `page_${n.id}` === cardId);
+    if (pageIdx !== -1) {
+      const p = getPos(cardId, projectDocs.length + pageIdx);
+      return { x: p.x + 150, y: p.y + 95 };
+    }
+    return null;
+  };
+
+  const handleSelectPinForConnect = (cardId: string) => {
+    if (!connectMode) return;
+    if (!connectFromId) {
+      setConnectFromId(cardId);
+      return;
+    }
+    if (connectFromId === cardId) {
+      setConnectFromId(null);
+      return;
+    }
+    const nextConn: BoardConnector = {
+      id: `conn_${Date.now()}`,
+      fromId: connectFromId,
+      toId: cardId,
+      style: connectStyle,
+      color: connectColor,
+    };
+    const next = [...connectors, nextConn];
+    setConnectors(next);
+    saveBoardConnectors(project.id, next);
+    setConnectFromId(null);
+  };
+
+  const handleDeleteConnector = (connId: string) => {
+    const next = connectors.filter((c) => c.id !== connId);
+    setConnectors(next);
+    saveBoardConnectors(project.id, next);
   };
 
   const startDrag = (cardId: string, e: React.PointerEvent, fallbackIdx = 0) => {
+    if (connectMode) return;
     e.preventDefault();
     e.stopPropagation();
     const pos = getPos(cardId, fallbackIdx);
@@ -403,11 +620,10 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   };
 
   const handleInstantAddPage = async () => {
-    await addProjectNote(project.id, '[PIN_PAGE]\n');
-  };
-
-  const handleInstantAddChecklist = async () => {
-    await addProjectNote(project.id, '[PIN_CHECKLIST]Checklist\n[]');
+    await addProjectNote(
+      project.id,
+      serializePinPageContent({ title: '', bodyHtml: '', checklist: [] })
+    );
   };
 
   const handleResetLayout = () => {
@@ -494,6 +710,9 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
   const startCanvasPan = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget && e.button !== 1) return;
+    if (connectMode && e.target === e.currentTarget) {
+      setConnectFromId(null);
+    }
     e.preventDefault();
     setIsPanning(true);
     const startX = e.clientX;
@@ -523,13 +742,16 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   };
 
   const handleCanvasPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const now = Date.now();
-    if (now - lastCursorSentRef.current < 45) return;
     const rect = viewportRef.current?.getBoundingClientRect();
     if (!rect) return;
-    lastCursorSentRef.current = now;
     const wx = Math.round((e.clientX - rect.left - panRef.current.x) / zoomRef.current);
     const wy = Math.round((e.clientY - rect.top - panRef.current.y) / zoomRef.current);
+    if (connectMode && connectFromId) {
+      setMouseWorld({ x: wx, y: wy });
+    }
+    const now = Date.now();
+    if (now - lastCursorSentRef.current < 45) return;
+    lastCursorSentRef.current = now;
     broadcastCursor(project.id, wx, wy);
   };
 
@@ -537,10 +759,52 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     (c) => c.projectId === project.id && c.member !== currentUser?.name
   );
 
-  const totalPins = projectDocs.length + pinnedPages.length + pinnedChecklists.length;
+  const totalPins = projectDocs.length + pinnedPages.length;
+
+  const getStrokeDash = (style: ConnectorStyle) => {
+    if (style === 'dashed') return '8 6';
+    if (style === 'dotted') return '2 6';
+    return undefined;
+  };
 
   return (
     <div className="flex-1 flex flex-col min-h-0 relative">
+      {/* Connector Style Picker Sub-Pill */}
+      {connectMode && (
+        <div className="fixed bottom-18 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-3 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-2 backdrop-blur-md">
+          <span className="text-[11px] font-semibold text-[#52525B] whitespace-nowrap">
+            {connectFromId ? 'Click target element' : 'Click first element'}
+          </span>
+          <div className="w-px h-4 bg-[#E4E2DC]" />
+          {(['arrow', 'line', 'dashed', 'dotted'] as ConnectorStyle[]).map((st) => (
+            <button
+              key={st}
+              type="button"
+              onClick={() => setConnectStyle(st)}
+              className={`px-2 py-0.5 text-[11px] font-medium rounded-full capitalize ${
+                connectStyle === st
+                  ? 'bg-[#0A5386] text-white'
+                  : 'text-[#52525B] hover:bg-black/5'
+              }`}
+            >
+              {st}
+            </button>
+          ))}
+          <div className="w-px h-4 bg-[#E4E2DC]" />
+          {CONNECTOR_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setConnectColor(c)}
+              style={{ backgroundColor: c }}
+              className={`w-3.5 h-3.5 rounded-full border border-white/40 ${
+                connectColor === c ? 'ring-2 ring-offset-1 ring-[#0A5386]' : ''
+              }`}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Fixed Floating Pill Bar (Bottom-Center) */}
       <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-2 py-1.5 shadow-2xl border border-[#E4E2DC] flex items-center gap-1.5 max-w-[95vw] overflow-x-auto backdrop-blur-md">
         <button
@@ -554,11 +818,18 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
         <button
           type="button"
-          onClick={handleInstantAddChecklist}
-          className="ios-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#133F47] text-white rounded-full"
+          onClick={() => {
+            setConnectMode((v) => !v);
+            setConnectFromId(null);
+          }}
+          className={`ios-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-full ${
+            connectMode
+              ? 'bg-[#8B1E1E] text-white'
+              : 'bg-[#133F47] text-white'
+          }`}
         >
-          <ListChecks className="w-3.5 h-3.5" />
-          Add Checklist
+          <ArrowUpRight className="w-3.5 h-3.5" />
+          {connectMode ? 'Done Connecting' : 'Connect'}
         </button>
 
         <label className="ios-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#254454] text-white rounded-full cursor-pointer">
@@ -673,19 +944,19 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               Blank infinite board for {project.title}
             </p>
             <p className="text-xs text-[#A1A1AA] mt-1">
-              Use the floating pill below to drop pages, checklists, design inspo, or files anywhere.
+              Use the floating pill below to add pages (with checklists &amp; colors), connect elements with arrows, or pin images &amp; files.
             </p>
           </div>
         </div>
       )}
 
-      {/* True Infinite Pan & Zoom Matrix Canvas (Dotted Matrix, No Scrollbars) */}
+      {/* True Infinite Pan & Zoom Matrix Canvas */}
       <div
         ref={viewportRef}
         onPointerDown={startCanvasPan}
         onPointerMove={handleCanvasPointerMove}
         className={`flex-1 overflow-hidden relative select-none ${
-          isPanning ? 'cursor-grabbing' : 'cursor-grab'
+          connectMode ? 'cursor-crosshair' : isPanning ? 'cursor-grabbing' : 'cursor-grab'
         }`}
         style={{
           overscrollBehavior: 'none',
@@ -705,30 +976,136 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           }}
           className="absolute top-0 left-0 will-change-transform select-text"
         >
-          {/* Pinned Design Inspo Images & Uploaded Files (Borderless Floating Pins) */}
+          {/* SVG Flow Arrows & Line Connectors Layer */}
+          <svg className="pointer-events-none overflow-visible absolute top-0 left-0 w-px h-px z-0">
+            <defs>
+              {CONNECTOR_COLORS.map((c) => {
+                const key = c.replace('#', '');
+                return (
+                  <marker
+                    key={key}
+                    id={`arrow-${key}`}
+                    viewBox="0 0 10 10"
+                    refX="8"
+                    refY="5"
+                    markerWidth="6"
+                    markerHeight="6"
+                    orient="auto-start-reverse"
+                  >
+                    <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill={c} />
+                  </marker>
+                );
+              })}
+            </defs>
+
+            {connectors.map((conn) => {
+              const from = getCardCenter(conn.fromId);
+              const to = getCardCenter(conn.toId);
+              if (!from || !to) return null;
+              const midX = (from.x + to.x) / 2;
+              const midY = (from.y + to.y) / 2;
+              const dx = Math.abs(to.x - from.x) * 0.4;
+              const d = `M ${from.x} ${from.y} C ${from.x + dx} ${from.y}, ${to.x - dx} ${to.y}, ${to.x} ${to.y}`;
+              const colorKey = conn.color.replace('#', '');
+              const hasArrow = conn.style === 'arrow' || conn.style === 'dashed';
+
+              return (
+                <g key={conn.id} className="group pointer-events-auto cursor-pointer">
+                  <path d={d} fill="none" stroke="transparent" strokeWidth={16} />
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke={conn.color}
+                    strokeWidth={2.5}
+                    strokeDasharray={getStrokeDash(conn.style)}
+                    markerEnd={hasArrow ? `url(#arrow-${colorKey})` : undefined}
+                  />
+                  <g
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteConnector(conn.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <circle cx={midX} cy={midY} r={10} fill="#18181B" />
+                    <path
+                      d={`M ${midX - 3.5} ${midY - 3.5} L ${midX + 3.5} ${midY + 3.5} M ${midX + 3.5} ${midY - 3.5} L ${midX - 3.5} ${midY + 3.5}`}
+                      stroke="#FFFFFF"
+                      strokeWidth={1.75}
+                      strokeLinecap="round"
+                    />
+                  </g>
+                </g>
+              );
+            })}
+
+            {/* Live Rubber-Band Preview While Connecting */}
+            {connectMode && connectFromId && mouseWorld && (() => {
+              const from = getCardCenter(connectFromId);
+              if (!from) return null;
+              const colorKey = connectColor.replace('#', '');
+              return (
+                <line
+                  x1={from.x}
+                  y1={from.y}
+                  x2={mouseWorld.x}
+                  y2={mouseWorld.y}
+                  stroke={connectColor}
+                  strokeWidth={2.5}
+                  strokeDasharray="6 5"
+                  markerEnd={
+                    connectStyle === 'arrow' || connectStyle === 'dashed'
+                      ? `url(#arrow-${colorKey})`
+                      : undefined
+                  }
+                />
+              );
+            })()}
+          </svg>
+
+          {/* Pinned Design Inspo Images & Uploaded Files */}
           {projectDocs.map((doc, idx) => {
             const cardId = `doc_${doc.id}`;
             const pos = getPos(cardId, idx);
             const isImage = doc.mimeType.startsWith('image/');
             const badge = getFileBadge(doc.name);
+            const isSource = connectFromId === cardId;
 
             if (isImage) {
               return (
                 <div
                   key={doc.id}
                   style={{ left: pos.x, top: pos.y }}
+                  onClick={(e) => {
+                    if (connectMode) {
+                      e.stopPropagation();
+                      handleSelectPinForConnect(cardId);
+                    }
+                  }}
                   onPointerDown={(e) => startDrag(cardId, e, idx)}
-                  className="group absolute w-[240px] cursor-grab active:cursor-grabbing select-none"
+                  className={`group absolute w-[240px] select-none rounded-xl ${
+                    connectMode
+                      ? 'cursor-crosshair'
+                      : 'cursor-grab active:cursor-grabbing'
+                  } ${
+                    isSource
+                      ? 'ring-2 ring-[#0A5386] ring-offset-2'
+                      : connectMode
+                      ? 'hover:ring-2 hover:ring-[#0A5386]/60'
+                      : ''
+                  }`}
                 >
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() => queueDelete('doc', doc.id, doc.name)}
-                    title="Delete pin"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2.5 -right-2.5 z-10 w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-md"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+                  {!connectMode && (
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => queueDelete('doc', doc.id, doc.name)}
+                      title="Delete pin"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2.5 -right-2.5 z-10 w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-md"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <img
                     src={doc.url}
                     alt={doc.name}
@@ -746,31 +1123,49 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               <div
                 key={doc.id}
                 style={{ left: pos.x, top: pos.y }}
+                onClick={(e) => {
+                  if (connectMode) {
+                    e.stopPropagation();
+                    handleSelectPinForConnect(cardId);
+                  }
+                }}
                 onPointerDown={(e) => startDrag(cardId, e, idx)}
-                className="group absolute w-[150px] flex flex-col items-center cursor-grab active:cursor-grabbing select-none"
+                className={`group absolute w-[150px] flex flex-col items-center select-none rounded-xl ${
+                  connectMode
+                    ? 'cursor-crosshair'
+                    : 'cursor-grab active:cursor-grabbing'
+                } ${
+                  isSource
+                    ? 'ring-2 ring-[#0A5386] ring-offset-2'
+                    : connectMode
+                    ? 'hover:ring-2 hover:ring-[#0A5386]/60'
+                    : ''
+                }`}
               >
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2 right-1 z-10 flex items-center gap-1">
-                  <a
-                    href={doc.url}
-                    download={doc.name}
-                    target="_blank"
-                    rel="noreferrer"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    title="Download file"
-                    className="w-6 h-6 rounded-full bg-white/95 border border-[#E4E2DC] text-[#18181B] hover:border-[#0A5386] flex items-center justify-center shadow-sm"
-                  >
-                    <Download className="w-3 h-3" />
-                  </a>
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() => queueDelete('doc', doc.id, doc.name)}
-                    title="Delete pin"
-                    className="w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-sm"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                {!connectMode && (
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2 right-1 z-10 flex items-center gap-1">
+                    <a
+                      href={doc.url}
+                      download={doc.name}
+                      target="_blank"
+                      rel="noreferrer"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      title="Download file"
+                      className="w-6 h-6 rounded-full bg-white/95 border border-[#E4E2DC] text-[#18181B] hover:border-[#0A5386] flex items-center justify-center shadow-sm"
+                    >
+                      <Download className="w-3 h-3" />
+                    </a>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => queueDelete('doc', doc.id, doc.name)}
+                      title="Delete pin"
+                      className="w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-sm"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
 
                 <div className="relative p-3">
                   {badge === 'SHEET' ? (
@@ -789,40 +1184,22 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
             );
           })}
 
-          {/* Borderless Floating Pages (Editable In-Place) */}
+          {/* Customizable Floating Pages (Rich Text + Paper Colors + Built-In Checklists) */}
           {pinnedPages.map((note, idx) => {
             const cardId = `page_${note.id}`;
             const fallbackPos = getPos(cardId, projectDocs.length + idx);
-            const titlePreview =
-              note.content.slice('[PIN_PAGE]'.length).split('\n')[0].trim() || 'Page';
+            const parsed = parsePinPageContent(note.content);
             return (
               <FloatingPagePin
                 key={note.id}
                 note={note}
                 pos={positions[cardId] ?? fallbackPos}
+                connectActive={connectMode}
+                isConnectSource={connectFromId === cardId}
+                onSelectForConnect={() => handleSelectPinForConnect(cardId)}
                 onDragStart={(e) => startDrag(cardId, e, projectDocs.length + idx)}
                 onUpdate={(content) => updateProjectNote(note.id, content)}
-                onDelete={() => queueDelete('note', note.id, titlePreview)}
-              />
-            );
-          })}
-
-          {/* Borderless Floating Checklists (Interactive In-Place) */}
-          {pinnedChecklists.map((note, idx) => {
-            const cardId = `chk_${note.id}`;
-            const fallbackPos = getPos(cardId, projectDocs.length + pinnedPages.length + idx);
-            const titlePreview =
-              note.content.slice('[PIN_CHECKLIST]'.length).split('\n')[0].trim() || 'Checklist';
-            return (
-              <FloatingChecklistPin
-                key={note.id}
-                note={note}
-                pos={positions[cardId] ?? fallbackPos}
-                onDragStart={(e) =>
-                  startDrag(cardId, e, projectDocs.length + pinnedPages.length + idx)
-                }
-                onUpdate={(content) => updateProjectNote(note.id, content)}
-                onDelete={() => queueDelete('note', note.id, titlePreview)}
+                onDelete={() => queueDelete('note', note.id, parsed.title || 'Page')}
               />
             );
           })}
