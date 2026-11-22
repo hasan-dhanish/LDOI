@@ -83,29 +83,59 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     month: 'short',
     year: 'numeric',
   });
-  const timeLabel = now.toLocaleTimeString('en-IN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  });
+  const hour12Raw = now.getHours() % 12 || 12;
+  const hoursStr = String(hour12Raw).padStart(2, '0');
+  const minsStr = String(now.getMinutes()).padStart(2, '0');
+  const secsStr = String(now.getSeconds()).padStart(2, '0');
+  const periodStr = now.getHours() >= 12 ? 'PM' : 'AM';
+  const greeting =
+    now.getHours() < 12
+      ? 'Good morning'
+      : now.getHours() < 17
+      ? 'Good afternoon'
+      : 'Good evening';
 
   return (
     <div className="space-y-6">
       {/* Big Date & Time + Desk Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-baseline gap-3">
-            <span className="text-3xl sm:text-4xl font-bold font-mono-num tracking-tight text-[#1C1C1E]">
-              {timeLabel}
-            </span>
-            <span className="text-sm font-semibold text-[#8E8E93]">
-              {weekday}, {dateLabel}
-            </span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="paper-card rounded-2xl px-4 py-3 flex items-center gap-4 border border-[#E2E0D8] shadow-xs w-fit">
+          {/* Split Digital Time Display */}
+          <div className="flex items-center gap-2 pr-4 border-r border-[#E2E0D8]">
+            <div className="flex items-baseline font-mono-num leading-none">
+              <span className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1C1C1E]">
+                {hoursStr}
+              </span>
+              <span className="text-2xl sm:text-3xl font-bold text-[#0A5386] mx-0.5 animate-pulse">
+                :
+              </span>
+              <span className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1C1C1E]">
+                {minsStr}
+              </span>
+            </div>
+            <div className="flex flex-col items-start justify-between h-8">
+              <span className="px-1.5 py-0.5 rounded-md bg-[#0A5386]/10 text-[#0A5386] text-[10px] font-bold font-mono-num leading-none">
+                {secsStr}
+              </span>
+              <span className="text-[10px] font-bold tracking-wider text-[#8E8E93] leading-none pl-0.5">
+                {periodStr}
+              </span>
+            </div>
           </div>
-          <h1 className="mt-1 text-base font-semibold text-[#3A3A3C]">
-            {myName}&apos;s Desk
-          </h1>
+
+          {/* Date & Desk Greeting */}
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+              <span className="text-xs font-bold uppercase tracking-wider text-[#0A5386]">
+                {weekday}
+              </span>
+              <span className="text-xs font-medium text-[#8E8E93]">· {dateLabel}</span>
+            </div>
+            <h1 className="mt-0.5 text-sm sm:text-base font-semibold text-[#1C1C1E] truncate">
+              {greeting}, {myName}
+            </h1>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
