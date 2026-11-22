@@ -5,7 +5,6 @@ import {
   CalendarClock,
   CheckSquare,
   FolderPlus,
-  Inbox,
   IndianRupee,
   Square,
 } from 'lucide-react';
@@ -27,7 +26,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     currentUser,
     projects,
     workflowSteps,
-    enquiries,
     journalEntries,
     documents,
     quotations,
@@ -40,7 +38,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     .sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
 
   const activeProjects = projects.filter((p) => p.status !== 'Archived' && p.status !== 'Completed');
-  const openEnquiries = enquiries.filter((e) => e.status !== 'Won' && e.status !== 'Dropped');
 
   const urgentItems = [
     ...activeProjects
@@ -141,14 +138,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => onNavigate('enquiries')}
-            className="ios-press inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-white border border-[#E2E0D8] hover:border-[#254454] rounded-xl text-[#1C1C1E] shadow-2xs"
-          >
-            <Inbox className="w-3.5 h-3.5 text-[#5FA8E0]" />
-            New Enquiry
-          </button>
-          <button
-            type="button"
             onClick={() => onNavigate('projects')}
             className="ios-press inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#0A5386] hover:bg-[#0C64A1] text-white rounded-xl shadow-[0_4px_12px_rgba(10,83,134,0.32)]"
           >
@@ -159,7 +148,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* LDOI Signature Widget Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
         <div className="paper-card rounded-2xl p-4 flex items-center gap-3.5">
           <div className="w-10 h-10 rounded-xl bg-[#0A5386] text-white flex items-center justify-center shrink-0">
             <CheckSquare className="w-5 h-5" />
@@ -180,18 +169,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="text-[11px] font-semibold text-[#8E8E93]">Active Builds</div>
             <div className="text-xl font-bold font-mono-num text-[#1C1C1E]">
               {activeProjects.length}
-            </div>
-          </div>
-        </div>
-
-        <div className="paper-card rounded-2xl p-4 flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#133F47] text-white flex items-center justify-center shrink-0">
-            <Inbox className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-[11px] font-semibold text-[#8E8E93]">Enquiries</div>
-            <div className="text-xl font-bold font-mono-num text-[#1C1C1E]">
-              {openEnquiries.length}
             </div>
           </div>
         </div>
