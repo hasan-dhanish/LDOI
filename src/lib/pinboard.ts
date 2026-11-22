@@ -126,3 +126,54 @@ export function saveBoardPositions(projectId: string, positions: BoardPositions)
     // ignore
   }
 }
+
+export interface BoardZone {
+  id: string;
+  title: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+}
+
+export function loadBoardZones(projectId: string): BoardZone[] {
+  try {
+    const raw = localStorage.getItem(`ldoi_board_zones_${projectId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveBoardZones(projectId: string, zones: BoardZone[]): void {
+  try {
+    localStorage.setItem(`ldoi_board_zones_${projectId}`, JSON.stringify(zones));
+  } catch {
+    // ignore
+  }
+}
+
+export interface BoardStroke {
+  id: string;
+  points: [number, number][];
+  color: string;
+  width: number;
+}
+
+export function loadBoardStrokes(projectId: string): BoardStroke[] {
+  try {
+    const raw = localStorage.getItem(`ldoi_board_strokes_${projectId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveBoardStrokes(projectId: string, strokes: BoardStroke[]): void {
+  try {
+    localStorage.setItem(`ldoi_board_strokes_${projectId}`, JSON.stringify(strokes));
+  } catch {
+    // ignore
+  }
+}

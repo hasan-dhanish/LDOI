@@ -6,15 +6,19 @@ import {
   CheckSquare,
   Crosshair,
   Download,
+  Eraser,
   FileSpreadsheet,
   FileText,
+  Frame,
   GripHorizontal,
   Image as ImageIcon,
   Italic,
+  Layers,
   List,
   ListChecks,
   Maximize2,
   Minus,
+  Pen,
   Plus,
   RotateCcw,
   Square,
@@ -30,17 +34,23 @@ import { useLdoi } from '../context/LdoiContext';
 import {
   loadBoardConnectors,
   loadBoardPositions,
+  loadBoardStrokes,
+  loadBoardZones,
   parsePinPageContent,
   saveBoardConnectors,
   saveBoardPositions,
+  saveBoardStrokes,
+  saveBoardZones,
   serializePinPageContent,
   type AnchorSide,
   type BoardConnector,
   type BoardPositions,
+  type BoardStroke,
+  type BoardZone,
   type ConnectorStyle,
   type PinPageData,
 } from '../lib/pinboard';
-import type { Project, ProjectNote } from '../types';
+import type { MemberName, Project, ProjectNote } from '../types';
 
 interface ProjectPinboardProps {
   project: Project;
@@ -443,6 +453,7 @@ const FloatingPagePin: React.FC<{
 export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => {
   const {
     currentUser,
+    onlineMembers,
     liveCursorsMap,
     broadcastCursor,
     projectNotes,
@@ -461,6 +472,14 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   const [connectors, setConnectors] = useState<BoardConnector[]>(() =>
     loadBoardConnectors(project.id)
   );
+  const [zones, setZones] = useState<BoardZone[]>(() => loadBoardZones(project.id));
+  const [strokes, setStrokes] = useState<BoardStroke[]>(() => loadBoardStrokes(project.id));
+  const [activeStroke, setActiveStroke] = useState<BoardStroke | null>(null);
+  const [drawMode, setDrawMode] = useState(false);
+  const [penColor, setPenColor] = useState('#0A5386');
+  const [penWidth, setPenWidth] = useState(3);
+  const [showElementsMenu, setShowElementsMenu] = useState(false);
+  const [followingMember, setFollowingMember] = useState<MemberName | null>(null);
   const [connectMode, setConnectMode] = useState(false);
   const [connectStyle, setConnectStyle] = useState<ConnectorStyle>('arrow');
   const [connectColor, setConnectColor] = useState('#0A5386');
@@ -519,6 +538,21 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     panRef.current = pan;
   }, [pan]);
 
+  // Follow selected teammate's live pointer when active
+  const followedCursor = followingMember
+    ? liveCursorsMap[`${project.id}:${followingMember}`]
+    : undefined;
+  useEffect(() => {
+    if (!followingMember || !followedCursor) return;
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const vw = rect ? rect.width : window.innerWidth;
+    const vh = rect ? rect.height : window.innerHeight;
+    setPan({
+      x: Math.round(vw / 2 - followedCursor.x * zoomRef.current),
+      y: Math.round(vh / 2 - followedCursor.y * zoomRef.current),
+    });
+  }, [followingMember, followedCursor?.x, followedCursor?.y, followedCursor]);
+
   const queueDelete = (kind: 'doc' | 'note', id: string, label: string) => {
     const timer = window.setTimeout(() => {
       if (kind === 'doc') {
@@ -546,8 +580,10 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setConnectMode(false);
+        setDrawMode(false);
         setConnectFrom(null);
         setSelectedConnId(null);
+        setFollowingMember(null);
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedConnId) {
         const tag = (e.target as HTMLElement | null)?.tagName;
@@ -826,11 +862,51 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   }, []);
 
   const startCanvasPan = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (drawMode && e.button === 0) {
+      e.preventDefault();
+      const rect = viewportRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const startWx = Math.round((e.clientX - rect.left - panRef.current.x) / zoomRef.current);
+      const startWy = Math.round((e.clientY - rect.top - panRef.current.y) / zoomRef.current);
+      let current: BoardStroke = {
+        id: `stk_${Date.now()}`,
+        points: [[startWx, startWy]],
+        color: penColor,
+        width: penWidth,
+      };
+      setActiveStroke(current);
+
+      const onMove = (ev: PointerEvent) => {
+        const wx = Math.round((ev.clientX - rect.left - panRef.current.x) / zoomRef.current);
+        const wy = Math.round((ev.clientY - rect.top - panRef.current.y) / zoomRef.current);
+        current = { ...current, points: [...current.points, [wx, wy]] };
+        setActiveStroke(current);
+      };
+
+      const onUp = () => {
+        if (current.points.length > 1) {
+          setStrokes((prev) => {
+            const next = [...prev, current];
+            saveBoardStrokes(project.id, next);
+            return next;
+          });
+        }
+        setActiveStroke(null);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+      };
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      return;
+    }
+
     if (e.target !== e.currentTarget && e.button !== 1) return;
     if (e.target === e.currentTarget) {
       setSelectedConnId(null);
       if (connectMode) setConnectFrom(null);
     }
+    setFollowingMember(null);
     e.preventDefault();
     setIsPanning(true);
     const startX = e.clientX;
@@ -855,8 +931,116 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   };
 
   const handleBackToCenter = () => {
+    setFollowingMember(null);
     setZoom(1);
     setPan({ x: 0, y: 0 });
+  };
+
+  const jumpToWorldPoint = (wx: number, wy: number) => {
+    setFollowingMember(null);
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const vw = rect ? rect.width : window.innerWidth;
+    const vh = rect ? rect.height : window.innerHeight;
+    setPan({
+      x: Math.round(vw / 2 - wx * zoomRef.current),
+      y: Math.round(vh / 2 - wy * zoomRef.current),
+    });
+    setShowElementsMenu(false);
+  };
+
+  const handleAddZone = () => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const vw = rect ? rect.width : window.innerWidth;
+    const vh = rect ? rect.height : window.innerHeight;
+    const cx = Math.round((-panRef.current.x + vw / 2 - 210) / zoomRef.current);
+    const cy = Math.round((-panRef.current.y + vh / 2 - 150) / zoomRef.current);
+    const newZone: BoardZone = {
+      id: `zone_${Date.now()}`,
+      title: 'Discussion Zone',
+      x: cx,
+      y: cy,
+      w: 420,
+      h: 300,
+      color: '#0A5386',
+    };
+    const next = [...zones, newZone];
+    setZones(next);
+    saveBoardZones(project.id, next);
+  };
+
+  const updateZone = (zoneId: string, patch: Partial<BoardZone>) => {
+    setZones((prev) => {
+      const next = prev.map((z) => (z.id === zoneId ? { ...z, ...patch } : z));
+      saveBoardZones(project.id, next);
+      return next;
+    });
+  };
+
+  const deleteZone = (zoneId: string) => {
+    setZones((prev) => {
+      const next = prev.filter((z) => z.id !== zoneId);
+      saveBoardZones(project.id, next);
+      return next;
+    });
+  };
+
+  const startZoneDrag = (zone: BoardZone, e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const origX = zone.x;
+    const origY = zone.y;
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = (ev.clientX - startX) / zoomRef.current;
+      const dy = (ev.clientY - startY) / zoomRef.current;
+      updateZone(zone.id, { x: Math.round(origX + dx), y: Math.round(origY + dy) });
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
+  const startZoneResize = (zone: BoardZone, e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const origW = zone.w;
+    const origH = zone.h;
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = (ev.clientX - startX) / zoomRef.current;
+      const dy = (ev.clientY - startY) / zoomRef.current;
+      updateZone(zone.id, {
+        w: Math.max(220, Math.round(origW + dx)),
+        h: Math.max(160, Math.round(origH + dy)),
+      });
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
+  const strokeToPath = (pts: [number, number][]): string => {
+    if (pts.length === 0) return '';
+    if (pts.length === 1) return `M ${pts[0][0]} ${pts[0][1]} l 0.1 0.1`;
+    let d = `M ${pts[0][0]} ${pts[0][1]}`;
+    for (let i = 1; i < pts.length; i++) {
+      d += ` L ${pts[i][0]} ${pts[i][1]}`;
+    }
+    return d;
   };
 
   const handleCanvasPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -929,6 +1113,125 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
   return (
     <div className="flex-1 flex flex-col min-h-0 relative">
+      {/* Top-Center Horizontal Online Members & Follow Pointer Pill */}
+      {onlineMembers.length > 0 && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-2 py-1 shadow-lg border border-[#E4E2DC] flex items-center gap-1 max-w-[90vw] overflow-x-auto backdrop-blur-md">
+          {onlineMembers.map((member) => {
+            const color = getMemberColor(member);
+            const isMe = member === currentUser?.name;
+            const isFollowing = followingMember === member;
+            return (
+              <button
+                key={member}
+                type="button"
+                disabled={isMe}
+                onClick={() => setFollowingMember((prev) => (prev === member ? null : member))}
+                title={
+                  isMe
+                    ? `${member} (You)`
+                    : isFollowing
+                    ? `Stop following ${member}`
+                    : `Click to follow ${member}'s pointer`
+                }
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${
+                  isFollowing
+                    ? 'bg-[#0A5386] text-white shadow-sm'
+                    : isMe
+                    ? 'text-[#52525B] cursor-default'
+                    : 'text-[#18181B] hover:bg-black/5 cursor-pointer'
+                }`}
+              >
+                <svg width="11" height="12" viewBox="0 0 20 22" fill="none" className="shrink-0">
+                  <path
+                    d="M2.5 1.5L17.5 10.5L10.2 12.6L6.8 19.5L2.5 1.5Z"
+                    fill={isFollowing ? '#FFFFFF' : color}
+                    stroke={isFollowing ? color : '#FFFFFF'}
+                    strokeWidth="1.8"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span>{isMe ? `${member} (You)` : member}</span>
+                {isFollowing && <span className="text-[9px] opacity-85">· Following</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Top-Left Collapsible Elements Index Menu */}
+      <div className="fixed top-16 left-4 z-40">
+        <button
+          type="button"
+          onClick={() => setShowElementsMenu((v) => !v)}
+          className="ios-press paper-card rounded-full px-3 py-1.5 shadow-lg border border-[#E4E2DC] inline-flex items-center gap-1.5 text-xs font-semibold text-[#18181B] backdrop-blur-md"
+        >
+          <Layers className="w-3.5 h-3.5 text-[#0A5386]" />
+          <span>Elements ({totalPins + zones.length})</span>
+        </button>
+
+        {showElementsMenu && (
+          <div className="mt-2 w-60 max-h-72 overflow-y-auto paper-card rounded-2xl p-2 shadow-2xl border border-[#E4E2DC] space-y-1 backdrop-blur-md">
+            {totalPins + zones.length === 0 ? (
+              <div className="py-4 text-center text-[11px] text-[#71717A]">
+                No elements on board yet.
+              </div>
+            ) : (
+              <>
+                {zones.map((z) => (
+                  <button
+                    key={z.id}
+                    type="button"
+                    onClick={() => jumpToWorldPoint(z.x + z.w / 2, z.y + z.h / 2)}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-xs hover:bg-black/5 text-[#18181B]"
+                  >
+                    <Frame className="w-3.5 h-3.5 shrink-0" style={{ color: z.color }} />
+                    <span className="truncate font-medium">{z.title || 'Zone'}</span>
+                  </button>
+                ))}
+                {pinnedPages.map((note, idx) => {
+                  const cardId = `page_${note.id}`;
+                  const p = positions[cardId] ?? getPos(cardId, projectDocs.length + idx);
+                  const parsed = parsePinPageContent(note.content);
+                  return (
+                    <button
+                      key={note.id}
+                      type="button"
+                      onClick={() => jumpToWorldPoint(p.x + 150, p.y + 90)}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-xs hover:bg-black/5 text-[#18181B]"
+                    >
+                      <StickyNote className="w-3.5 h-3.5 text-[#0A5386] shrink-0" />
+                      <span className="truncate font-medium">
+                        {parsed.title || 'Untitled Page'}
+                      </span>
+                    </button>
+                  );
+                })}
+                {projectDocs.map((doc, idx) => {
+                  const cardId = `doc_${doc.id}`;
+                  const p = positions[cardId] ?? getPos(cardId, idx);
+                  const isImg = doc.mimeType.startsWith('image/');
+                  return (
+                    <button
+                      key={doc.id}
+                      type="button"
+                      onClick={() => jumpToWorldPoint(p.x + 100, p.y + 80)}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-xs hover:bg-black/5 text-[#18181B]"
+                    >
+                      {isImg ? (
+                        <ImageIcon className="w-3.5 h-3.5 text-[#254454] shrink-0" />
+                      ) : (
+                        <FileText className="w-3.5 h-3.5 text-[#133F47] shrink-0" />
+                      )}
+                      <span className="truncate font-medium">{doc.name}</span>
+                    </button>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Edit Existing Connector Pill */}
       {selectedConn && !connectMode && (
         <div className="fixed bottom-18 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-2.5 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-1.5 backdrop-blur-md">
@@ -1018,6 +1321,65 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         </div>
       )}
 
+      {drawMode && (
+        <div className="fixed bottom-18 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-3 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-2 backdrop-blur-md">
+          {['#18181B', '#0A5386', '#8B1E1E', '#133F47', '#F4F4F5'].map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setPenColor(c)}
+              style={{ backgroundColor: c }}
+              className={`w-4 h-4 rounded-full border border-black/20 ${
+                penColor === c ? 'ring-2 ring-offset-1 ring-[#0A5386]' : ''
+              }`}
+            />
+          ))}
+          <div className="w-px h-4 bg-[#E4E2DC]" />
+          {[2, 4, 7].map((w) => (
+            <button
+              key={w}
+              type="button"
+              onClick={() => setPenWidth(w)}
+              title={`${w}px stroke`}
+              className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                penWidth === w ? 'bg-[#0A5386]/15 ring-1 ring-[#0A5386]' : 'hover:bg-black/5'
+              }`}
+            >
+              <span
+                className="rounded-full bg-current text-[#18181B]"
+                style={{ width: w + 3, height: w + 3 }}
+              />
+            </button>
+          ))}
+          <div className="w-px h-4 bg-[#E4E2DC]" />
+          <button
+            type="button"
+            onClick={() => {
+              setStrokes((prev) => {
+                const next = prev.slice(0, -1);
+                saveBoardStrokes(project.id, next);
+                return next;
+              });
+            }}
+            title="Undo Last Stroke"
+            className="p-1.5 rounded-full text-[#52525B] hover:text-[#18181B] hover:bg-black/5"
+          >
+            <Undo2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStrokes([]);
+              saveBoardStrokes(project.id, []);
+            }}
+            title="Clear All Sketches"
+            className="p-1.5 rounded-full text-[#DC2626] hover:bg-[#DC2626]/10"
+          >
+            <Eraser className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Fixed Floating Pill Bar (Bottom-Center) */}
       <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-2 py-1.5 shadow-2xl border border-[#E4E2DC] flex items-center gap-1.5 max-w-[95vw] overflow-x-auto backdrop-blur-md">
         <button
@@ -1031,8 +1393,18 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
         <button
           type="button"
+          onClick={handleAddZone}
+          className="ios-press shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#254454] text-white rounded-full"
+        >
+          <Frame className="w-3.5 h-3.5" />
+          Add Zone
+        </button>
+
+        <button
+          type="button"
           onClick={() => {
             setConnectMode((v) => !v);
+            setDrawMode(false);
             setConnectFrom(null);
             setSelectedConnId(null);
           }}
@@ -1042,6 +1414,24 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           }`}
         >
           <ArrowUpRight className="w-3.5 h-3.5" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setDrawMode((v) => !v);
+            setConnectMode(false);
+            setConnectFrom(null);
+            setSelectedConnId(null);
+          }}
+          title={drawMode ? 'Exit Freehand Pen' : 'Freehand Sketch Pen'}
+          className={`ios-press shrink-0 inline-flex items-center justify-center p-2 rounded-full ${
+            drawMode
+              ? 'bg-[#8B1E1E] text-white'
+              : 'bg-white/80 border border-[#E4E2DC] text-[#18181B]'
+          }`}
+        >
+          <Pen className="w-3.5 h-3.5" />
         </button>
 
         <label className="ios-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#254454] text-white rounded-full cursor-pointer">
@@ -1168,7 +1558,11 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         onPointerDown={startCanvasPan}
         onPointerMove={handleCanvasPointerMove}
         className={`flex-1 overflow-hidden relative select-none ${
-          connectMode ? 'cursor-crosshair' : isPanning ? 'cursor-grabbing' : 'cursor-grab'
+          connectMode || drawMode
+            ? 'cursor-crosshair'
+            : isPanning
+            ? 'cursor-grabbing'
+            : 'cursor-grab'
         }`}
         style={{
           overscrollBehavior: 'none',
@@ -1189,6 +1583,68 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           }}
           className="absolute top-0 left-0 select-text"
         >
+          {/* Resizable Discussion Zones (z-0, behind pins) */}
+          {zones.map((zone) => (
+            <div
+              key={zone.id}
+              style={{
+                left: zone.x,
+                top: zone.y,
+                width: zone.w,
+                height: zone.h,
+                backgroundColor: `${zone.color}12`,
+                borderColor: `${zone.color}55`,
+              }}
+              className="group absolute rounded-2xl border-2 border-dashed z-0 select-none"
+            >
+              <div
+                onPointerDown={(e) => startZoneDrag(zone, e)}
+                className="px-3.5 py-2 flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing"
+              >
+                <input
+                  type="text"
+                  value={zone.title}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onChange={(e) => updateZone(zone.id, { title: e.target.value })}
+                  className="text-xs font-bold bg-transparent focus:outline-none w-full"
+                  style={{ color: zone.color, backgroundColor: 'transparent' }}
+                />
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shrink-0">
+                  {CONNECTOR_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => updateZone(zone.id, { color: c })}
+                      style={{ backgroundColor: c }}
+                      className="w-2.5 h-2.5 rounded-full border border-white/60"
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => deleteZone(zone.id)}
+                    className="p-0.5 text-[#71717A] hover:text-[#DC2626]"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Bottom-Right Resize Handle */}
+              <div
+                onPointerDown={(e) => startZoneResize(zone, e)}
+                title="Drag to resize zone"
+                className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-1 right-1 w-4 h-4 cursor-nwse-resize flex items-end justify-end p-0.5"
+              >
+                <span
+                  className="w-2.5 h-2.5 border-r-2 border-b-2 rounded-br-xs"
+                  style={{ borderColor: zone.color }}
+                />
+              </div>
+            </div>
+          ))}
+
           {/* Pinned Design Inspo Images & Uploaded Files */}
           {projectDocs.map((doc, idx) => {
             const cardId = `doc_${doc.id}`;
@@ -1400,6 +1856,29 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                 </g>
               );
             })}
+
+            {strokes.map((stk) => (
+              <path
+                key={stk.id}
+                d={strokeToPath(stk.points)}
+                fill="none"
+                stroke={stk.color}
+                strokeWidth={stk.width}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
+
+            {activeStroke && (
+              <path
+                d={strokeToPath(activeStroke.points)}
+                fill="none"
+                stroke={activeStroke.color}
+                strokeWidth={activeStroke.width}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
 
             {/* Live Rubber-Band Preview While Connecting */}
             {connectMode && connectFrom && mouseWorld && (() => {
