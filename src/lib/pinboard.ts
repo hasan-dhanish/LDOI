@@ -84,7 +84,7 @@ export interface BoardConnector {
   toAnchor?: AnchorSide;
   style: ConnectorStyle;
   color: string;
-  waypoints?: { x: number; y: number }[];
+  segOffsets?: Record<number, number>;
 }
 
 export function loadBoardConnectors(projectId: string): BoardConnector[] {

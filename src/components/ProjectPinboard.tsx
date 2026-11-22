@@ -135,12 +135,8 @@ function getConnectorPolylinePoints(
   fromSide: AnchorSide,
   to: { x: number; y: number },
   toSide: AnchorSide,
-  waypoints?: { x: number; y: number }[]
+  segOffsets?: Record<number, number>
 ): { x: number; y: number }[] {
-  if (waypoints && waypoints.length > 0) {
-    return [from, ...waypoints, to];
-  }
-
   const stub = 28;
   const dir = (side: AnchorSide) =>
     side === 'left'
@@ -173,13 +169,49 @@ function getConnectorPolylinePoints(
   }
   rawPts.push(p2, to);
 
-  const pts: { x: number; y: number }[] = [];
+  // Deduplicate identical points
+  const deduped: { x: number; y: number }[] = [];
   for (const pt of rawPts) {
-    const prev = pts[pts.length - 1];
+    const prev = deduped[deduped.length - 1];
     if (!prev || Math.hypot(pt.x - prev.x, pt.y - prev.y) > 0.5) {
-      pts.push(pt);
+      deduped.push({ x: pt.x, y: pt.y });
     }
   }
+
+  // Merge collinear consecutive segments so only true 90-degree corners remain
+  const pts: { x: number; y: number }[] = [];
+  for (const pt of deduped) {
+    if (pts.length >= 2) {
+      const a = pts[pts.length - 2];
+      const b = pts[pts.length - 1];
+      const sameX = Math.abs(a.x - b.x) < 0.5 && Math.abs(b.x - pt.x) < 0.5;
+      const sameY = Math.abs(a.y - b.y) < 0.5 && Math.abs(b.y - pt.y) < 0.5;
+      if (sameX || sameY) {
+        pts[pts.length - 1] = pt;
+        continue;
+      }
+    }
+    pts.push(pt);
+  }
+
+  // Apply user's perpendicular length-adjustment offsets to inner segments
+  if (segOffsets) {
+    for (let segIdx = 1; segIdx <= pts.length - 3; segIdx++) {
+      const offset = segOffsets[segIdx];
+      if (!offset) continue;
+      const a = pts[segIdx];
+      const b = pts[segIdx + 1];
+      const isVertical = Math.abs(a.x - b.x) < 0.5;
+      if (isVertical) {
+        a.x += offset;
+        b.x += offset;
+      } else {
+        a.y += offset;
+        b.y += offset;
+      }
+    }
+  }
+
   return pts;
 }
 
@@ -641,7 +673,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
       positions: { ...positions },
       connectors: connectors.map((c) => ({
         ...c,
-        waypoints: c.waypoints ? c.waypoints.map((w) => ({ ...w })) : undefined,
+        segOffsets: c.segOffsets ? { ...c.segOffsets } : undefined,
       })),
       zones: zones.map((z) => ({ ...z })),
       strokes: strokes.map((s) => ({ ...s, points: [...s.points] })),
@@ -880,46 +912,31 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     if (selectedConnId === connId) setSelectedConnId(null);
   };
 
-  const startWaypointDrag = (
+  const startSegmentSlide = (
     conn: BoardConnector,
-    pts: { x: number; y: number }[],
-    mode: 'move' | 'insert',
-    index: number,
+    segIdx: number,
+    isVertical: boolean,
     e: React.PointerEvent
   ) => {
     e.preventDefault();
     e.stopPropagation();
-    const rect = viewportRef.current?.getBoundingClientRect();
-    if (!rect) return;
     const startSnap = snapshotNow();
     let moved = false;
-
-    const baseWaypoints = pts.slice(1, -1).map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }));
-    const initialMid =
-      mode === 'insert'
-        ? {
-            x: Math.round((pts[index].x + pts[index + 1].x) / 2),
-            y: Math.round((pts[index].y + pts[index + 1].y) / 2),
-          }
-        : null;
-
-    const targetWpIdx = mode === 'insert' ? index : index - 1;
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    const origOffset = conn.segOffsets?.[segIdx] ?? 0;
 
     const onMove = (ev: PointerEvent) => {
       if (!moved) {
         moved = true;
         pushHistory(startSnap);
       }
-      const wx = Math.round((ev.clientX - rect.left - panRef.current.x) / zoomRef.current);
-      const wy = Math.round((ev.clientY - rect.top - panRef.current.y) / zoomRef.current);
-      const nextWaypoints = baseWaypoints.map((w) => ({ ...w }));
-      if (mode === 'insert' && initialMid) {
-        nextWaypoints.splice(targetWpIdx, 0, { x: wx, y: wy });
-      } else {
-        nextWaypoints[targetWpIdx] = { x: wx, y: wy };
-      }
+      const delta = isVertical
+        ? Math.round((ev.clientX - startClientX) / zoomRef.current)
+        : Math.round((ev.clientY - startClientY) / zoomRef.current);
+      const nextOffsets = { ...(conn.segOffsets ?? {}), [segIdx]: origOffset + delta };
       setConnectors((prev) => {
-        const next = prev.map((c) => (c.id === conn.id ? { ...c, waypoints: nextWaypoints } : c));
+        const next = prev.map((c) => (c.id === conn.id ? { ...c, segOffsets: nextOffsets } : c));
         saveBoardConnectors(project.id, next);
         return next;
       });
@@ -932,27 +949,6 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
-  };
-
-  const removeWaypoint = (
-    conn: BoardConnector,
-    pts: { x: number; y: number }[],
-    ptIndex: number
-  ) => {
-    pushHistory();
-    const nextWaypoints = pts
-      .slice(1, -1)
-      .filter((_, i) => i !== ptIndex - 1)
-      .map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }));
-    setConnectors((prev) => {
-      const next = prev.map((c) =>
-        c.id === conn.id
-          ? { ...c, waypoints: nextWaypoints.length > 0 ? nextWaypoints : undefined }
-          : c
-      );
-      saveBoardConnectors(project.id, next);
-      return next;
-    });
   };
 
   const startDrag = (cardId: string, e: React.PointerEvent, fallbackIdx = 0) => {
@@ -1575,11 +1571,11 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
             title="Line Color Wheel"
           />
           <div className="w-px h-4 bg-[#E4E2DC] mx-0.5" />
-          {selectedConn.waypoints && selectedConn.waypoints.length > 0 && (
+          {selectedConn.segOffsets && Object.keys(selectedConn.segOffsets).length > 0 && (
             <button
               type="button"
-              onClick={() => updateConnector(selectedConn.id, { waypoints: undefined })}
-              title="Reset Line Flow"
+              onClick={() => updateConnector(selectedConn.id, { segOffsets: undefined })}
+              title="Reset Line Lengths"
               className="p-1.5 rounded-full text-[#52525B] hover:text-[#18181B] hover:bg-black/5"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -1593,9 +1589,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                 toId: selectedConn.fromId,
                 fromAnchor: selectedConn.toAnchor ?? 'left',
                 toAnchor: selectedConn.fromAnchor ?? 'right',
-                waypoints: selectedConn.waypoints
-                  ? [...selectedConn.waypoints].reverse()
-                  : undefined,
+                segOffsets: undefined,
               })
             }
             title="Reverse Arrow Direction"
@@ -2271,7 +2265,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                 fromSide,
                 to,
                 toSide,
-                conn.waypoints
+                conn.segOffsets
               );
               const d = buildRoundedPathFromPoints(pts, 14);
 
@@ -2311,79 +2305,32 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                     strokeDasharray={getStrokeDash(conn.style)}
                     markerEnd={hasArrow ? `url(#arrow-${colorKey})` : undefined}
                   />
-                  {isSelected && (
-                    <>
-                      <circle
-                        cx={from.x}
-                        cy={from.y}
-                        r={4.5}
-                        fill="#FFFFFF"
-                        stroke={conn.color}
-                        strokeWidth={2}
-                      />
-                      <circle
-                        cx={to.x}
-                        cy={to.y}
-                        r={4.5}
-                        fill="#FFFFFF"
-                        stroke={conn.color}
-                        strokeWidth={2}
-                      />
-
-                      {/* Segment Midpoint Handles: drag to pull a new bend anywhere */}
-                      {pts.slice(0, -1).map((a, segIdx) => {
-                        const b = pts[segIdx + 1];
-                        if (Math.hypot(b.x - a.x, b.y - a.y) < 28) return null;
-                        const mx = (a.x + b.x) / 2;
-                        const my = (a.y + b.y) / 2;
-                        return (
-                          <g
-                            key={`seg-${segIdx}`}
-                            onPointerDown={(e) => startWaypointDrag(conn, pts, 'insert', segIdx, e)}
-                            className="cursor-grab active:cursor-grabbing"
-                          >
-                            <circle
-                              cx={mx}
-                              cy={my}
-                              r={5.5}
-                              fill={conn.color}
-                              fillOpacity={0.18}
-                              stroke={conn.color}
-                              strokeWidth={1.5}
-                            />
-                            <path
-                              d={`M ${mx - 2.5} ${my} L ${mx + 2.5} ${my} M ${mx} ${my - 2.5} L ${mx} ${my + 2.5}`}
-                              stroke={conn.color}
-                              strokeWidth={1.4}
-                              strokeLinecap="round"
-                            />
-                          </g>
-                        );
-                      })}
-
-                      {/* Existing Bend Handles: drag to reshape, double-click to remove */}
-                      {pts.slice(1, -1).map((pt, i) => {
-                        const ptIdx = i + 1;
-                        return (
-                          <circle
-                            key={`wp-${ptIdx}`}
-                            cx={pt.x}
-                            cy={pt.y}
-                            r={5.5}
-                            fill="#FFFFFF"
-                            stroke={conn.color}
-                            strokeWidth={2.2}
-                            onPointerDown={(e) => startWaypointDrag(conn, pts, 'move', ptIdx, e)}
-                            onDoubleClick={(e) => {
-                              e.stopPropagation();
-                              removeWaypoint(conn, pts, ptIdx);
-                            }}
-                            className="cursor-move"
-                          />
-                        );
-                      })}
-                    </>
-                  )}
+                  {isSelected &&
+                    pts.slice(1, -2).map((a, i) => {
+                      const segIdx = i + 1;
+                      const b = pts[segIdx + 1];
+                      if (!b || Math.hypot(b.x - a.x, b.y - a.y) < 16) return null;
+                      const isVertical = Math.abs(a.x - b.x) < 0.5;
+                      const mx = (a.x + b.x) / 2;
+                      const my = (a.y + b.y) / 2;
+                      const w = isVertical ? 8 : 20;
+                      const h = isVertical ? 20 : 8;
+                      return (
+                        <rect
+                          key={`slide-${segIdx}`}
+                          x={mx - w / 2}
+                          y={my - h / 2}
+                          width={w}
+                          height={h}
+                          rx={4}
+                          fill="#FFFFFF"
+                          stroke={conn.color}
+                          strokeWidth={2}
+                          onPointerDown={(e) => startSegmentSlide(conn, segIdx, isVertical, e)}
+                          className={isVertical ? 'cursor-ew-resize' : 'cursor-ns-resize'}
+                        />
+                      );
+                    })}
                 </g>
               );
             })}
