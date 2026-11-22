@@ -109,7 +109,8 @@
   color: #f4f4f5;
 }
 
-.dark-theme .notebook-title-input {
+.dark-theme .notebook-title-input,
+.dark-theme .notebook-tag-input {
   background-color: transparent !important;
 }
 
@@ -465,18 +466,6 @@
 
 .dark-theme .notebook-editor hr {
   border-top-color: rgba(255, 255, 255, 0.14);
-}
-
-.notebook-tag-input {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-.dark-theme .notebook-tag-input {
-  background: transparent !important;
-  border: none !important;
-  color: #f4f4f5 !important;
 }
 
 /* Frosted Glassmorphic Card */
