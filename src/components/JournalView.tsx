@@ -357,6 +357,7 @@ export const JournalView: React.FC = () => {
                     const pages = journalEntries.filter((e) => getEntryBookName(e) === book.name);
                     return (
                       <div key={book.name} className="group relative">
+                        <div className="book-spotlight" />
                         <button
                           type="button"
                           onClick={(e) => triggerOpenBook(book, pages[0]?.id ?? null, e)}
