@@ -358,19 +358,6 @@ export const JournalView: React.FC = () => {
                     const pages = journalEntries.filter((e) => getEntryBookName(e) === book.name);
                     return (
                       <div key={book.name} className="group relative">
-                        <AnimatedDeleteButton
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteBook(
-                              book.name,
-                              pages.map((p) => p.id)
-                            );
-                          }}
-                          title={`Delete ${book.name}`}
-                          className="!absolute -top-2.5 -right-2.5 z-20 opacity-0 group-hover:opacity-100"
-                        />
-
                         <button
                           type="button"
                           onClick={(e) => triggerOpenBook(book, pages[0]?.id ?? null, e)}
@@ -769,6 +756,18 @@ export const JournalView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <AnimatedDeleteButton
+            size="sm"
+            onClick={() =>
+              handleDeleteBook(
+                openBookName,
+                journalEntries
+                  .filter((e) => getEntryBookName(e) === openBookName)
+                  .map((p) => p.id)
+              )
+            }
+            title={`Delete ${openBookName}`}
+          />
           <button
             type="button"
             onClick={() => handleCreatePage('Idea')}
@@ -966,6 +965,23 @@ export const JournalView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        open={Boolean(deleteBookTarget)}
+        title="Delete Book"
+        message={
+          deleteBookTarget
+            ? `Delete "${deleteBookTarget.name}" and its ${
+                deleteBookTarget.pageIds.length === 1
+                  ? '1 page'
+                  : `${deleteBookTarget.pageIds.length} pages`
+              } from the shelf?`
+            : ''
+        }
+        confirmLabel="Delete Book"
+        onConfirm={confirmDeleteBook}
+        onCancel={() => setDeleteBookTarget(null)}
+      />
     </div>
   );
 };

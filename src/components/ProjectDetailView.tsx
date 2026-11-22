@@ -65,6 +65,10 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
       {/* Fixed Floating Top-Right Actions */}
       <div className="fixed top-4 right-4 z-40 flex items-center gap-2">
+        <AnimatedDeleteButton
+          onClick={() => setConfirmDeleteOpen(true)}
+          title="Delete Project"
+        />
         {project.status !== 'Completed' && (
           <button
             type="button"
@@ -75,10 +79,6 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             End Project
           </button>
         )}
-        <AnimatedDeleteButton
-          onClick={() => setConfirmDeleteOpen(true)}
-          title="Delete Project"
-        />
       </div>
 
       {/* Full-Screen Pinboard Matrix Canvas */}
