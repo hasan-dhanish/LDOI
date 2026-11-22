@@ -74,11 +74,14 @@ export function serializePinPageContent(data: PinPageData): string {
 }
 
 export type ConnectorStyle = 'arrow' | 'line' | 'dashed' | 'dotted';
+export type AnchorSide = 'top' | 'right' | 'bottom' | 'left';
 
 export interface BoardConnector {
   id: string;
   fromId: string;
   toId: string;
+  fromAnchor?: AnchorSide;
+  toAnchor?: AnchorSide;
   style: ConnectorStyle;
   color: string;
 }

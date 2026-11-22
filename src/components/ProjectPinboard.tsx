@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ArrowLeftRight,
   ArrowUpRight,
   Bold,
   CheckSquare,
@@ -33,6 +34,7 @@ import {
   saveBoardConnectors,
   saveBoardPositions,
   serializePinPageContent,
+  type AnchorSide,
   type BoardConnector,
   type BoardPositions,
   type ConnectorStyle,
@@ -53,6 +55,7 @@ const PAGE_PAPER_COLORS = [
 ];
 
 const CONNECTOR_COLORS = ['#0A5386', '#18181B', '#8B1E1E', '#133F47'];
+const ANCHOR_SIDES: AnchorSide[] = ['top', 'right', 'bottom', 'left'];
 
 function getFileBadge(name: string): string {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
@@ -62,12 +65,54 @@ function getFileBadge(name: string): string {
   return ext.toUpperCase().slice(0, 5) || 'FILE';
 }
 
+const AnchorDots: React.FC<{
+  visible: boolean;
+  activeSide: AnchorSide | null;
+  onSelectSide: (side: AnchorSide) => void;
+}> = ({ visible, activeSide, onSelectSide }) => {
+  if (!visible) return null;
+  const posClasses: Record<AnchorSide, string> = {
+    top: '-top-2 left-1/2 -translate-x-1/2',
+    right: '-right-2 top-1/2 -translate-y-1/2',
+    bottom: '-bottom-2 left-1/2 -translate-x-1/2',
+    left: '-left-2 top-1/2 -translate-y-1/2',
+  };
+
+  return (
+    <>
+      {ANCHOR_SIDES.map((side) => {
+        const isActive = activeSide === side;
+        return (
+          <button
+            key={side}
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectSide(side);
+            }}
+            title={`Connect ${side} edge`}
+            className={`absolute z-30 w-4 h-4 rounded-full border-2 border-white shadow-md transition-transform cursor-crosshair ${
+              posClasses[side]
+            } ${
+              isActive
+                ? 'bg-[#8B1E1E] scale-125 ring-2 ring-[#8B1E1E]/40'
+                : 'bg-[#0A5386] hover:scale-125'
+            }`}
+          />
+        );
+      })}
+    </>
+  );
+};
+
 const FloatingPagePin: React.FC<{
   note: ProjectNote;
   pos: { x: number; y: number };
   connectActive: boolean;
-  isConnectSource: boolean;
-  onSelectForConnect: () => void;
+  activeAnchorSide: AnchorSide | null;
+  onSelectAnchor: (side: AnchorSide) => void;
+  onMeasure: (el: HTMLDivElement | null) => void;
   onDragStart: (e: React.PointerEvent) => void;
   onUpdate: (content: string) => void;
   onDelete: () => void;
@@ -75,8 +120,9 @@ const FloatingPagePin: React.FC<{
   note,
   pos,
   connectActive,
-  isConnectSource,
-  onSelectForConnect,
+  activeAnchorSide,
+  onSelectAnchor,
+  onMeasure,
   onDragStart,
   onUpdate,
   onDelete,
@@ -149,16 +195,11 @@ const FloatingPagePin: React.FC<{
 
   return (
     <div
+      ref={onMeasure}
       style={{
         left: pos.x,
         top: pos.y,
         backgroundColor: hasCustomTint ? bgColor : undefined,
-      }}
-      onClick={(e) => {
-        if (connectActive) {
-          e.stopPropagation();
-          onSelectForConnect();
-        }
       }}
       onFocus={() => setIsFocused(true)}
       onBlur={(e) => {
@@ -170,14 +211,15 @@ const FloatingPagePin: React.FC<{
         hasCustomTint
           ? 'shadow-[0_14px_34px_rgba(24,24,27,0.14)] text-[#18181B]'
           : 'floating-sheet'
-      } ${
-        isConnectSource
-          ? 'ring-2 ring-[#0A5386] ring-offset-2'
-          : connectActive
-          ? 'hover:ring-2 hover:ring-[#0A5386]/60 cursor-crosshair'
-          : ''
-      }`}
+      } ${activeAnchorSide ? 'ring-2 ring-[#0A5386]/70' : ''}`}
     >
+      {/* 4 Edge Snap Dots */}
+      <AnchorDots
+        visible={connectActive}
+        activeSide={activeAnchorSide}
+        onSelectSide={onSelectAnchor}
+      />
+
       {/* Hover / Focus Rich-Text & Color Mini-Toolbar */}
       {!connectActive && (
         <div
@@ -347,11 +389,7 @@ const FloatingPagePin: React.FC<{
                 )}
                 <span
                   className={`text-xs leading-snug ${
-                    cp.done
-                      ? 'line-through text-[#71717A]'
-                      : hasCustomTint
-                      ? 'text-[#18181B]'
-                      : 'text-[#18181B]'
+                    cp.done ? 'line-through text-[#71717A]' : 'text-[#18181B]'
                   }`}
                 >
                   {cp.text}
@@ -426,8 +464,30 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   const [connectMode, setConnectMode] = useState(false);
   const [connectStyle, setConnectStyle] = useState<ConnectorStyle>('arrow');
   const [connectColor, setConnectColor] = useState('#0A5386');
-  const [connectFromId, setConnectFromId] = useState<string | null>(null);
+  const [connectFrom, setConnectFrom] = useState<{ cardId: string; side: AnchorSide } | null>(
+    null
+  );
+  const [selectedConnId, setSelectedConnId] = useState<string | null>(null);
   const [mouseWorld, setMouseWorld] = useState<{ x: number; y: number } | null>(null);
+
+  // Measure actual rendered dimensions of each pin so edge dots & arrows snap cleanly to surfaces
+  const [cardSizes, setCardSizes] = useState<Record<string, { w: number; h: number }>>({});
+  const cardNodesRef = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const registerCardRef = useCallback(
+    (cardId: string) => (el: HTMLDivElement | null) => {
+      cardNodesRef.current[cardId] = el;
+      if (el) {
+        const w = el.offsetWidth;
+        const h = el.offsetHeight;
+        setCardSizes((prev) => {
+          if (prev[cardId]?.w === w && prev[cardId]?.h === h) return prev;
+          return { ...prev, [cardId]: { w, h } };
+        });
+      }
+    },
+    []
+  );
 
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
@@ -486,7 +546,19 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setConnectMode(false);
-        setConnectFromId(null);
+        setConnectFrom(null);
+        setSelectedConnId(null);
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedConnId) {
+        const tag = (e.target as HTMLElement | null)?.tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && !(e.target as HTMLElement)?.isContentEditable) {
+          setConnectors((prev) => {
+            const next = prev.filter((c) => c.id !== selectedConnId);
+            saveBoardConnectors(project.id, next);
+            return next;
+          });
+          setSelectedConnId(null);
+        }
       }
       if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z') return;
       const tag = (e.target as HTMLElement | null)?.tagName;
@@ -511,7 +583,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedConnId, project.id]);
 
   const hiddenIds = new Set(pendingDeletes.map((p) => p.id));
   const projectDocs = documents.filter(
@@ -528,49 +600,94 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     return { x: 80 + col * 320, y: 100 + row * 260 };
   };
 
-  const getCardCenter = (cardId: string): { x: number; y: number } | null => {
+  const getCardRect = (
+    cardId: string
+  ): { x: number; y: number; w: number; h: number } | null => {
     const docIdx = projectDocs.findIndex((d) => `doc_${d.id}` === cardId);
     if (docIdx !== -1) {
       const doc = projectDocs[docIdx];
       const p = getPos(cardId, docIdx);
       const isImg = doc.mimeType.startsWith('image/');
-      return { x: p.x + (isImg ? 120 : 75), y: p.y + (isImg ? 95 : 55) };
+      const size = cardSizes[cardId] ?? { w: isImg ? 240 : 150, h: isImg ? 190 : 110 };
+      return { x: p.x, y: p.y, w: size.w, h: size.h };
     }
     const pageIdx = pinnedPages.findIndex((n) => `page_${n.id}` === cardId);
     if (pageIdx !== -1) {
       const p = getPos(cardId, projectDocs.length + pageIdx);
-      return { x: p.x + 150, y: p.y + 95 };
+      const size = cardSizes[cardId] ?? { w: 300, h: 165 };
+      return { x: p.x, y: p.y, w: size.w, h: size.h };
     }
     return null;
   };
 
-  const handleSelectPinForConnect = (cardId: string) => {
+  const getAnchorPoint = (
+    rect: { x: number; y: number; w: number; h: number },
+    side: AnchorSide
+  ): { x: number; y: number } => {
+    switch (side) {
+      case 'top':
+        return { x: rect.x + rect.w / 2, y: rect.y };
+      case 'right':
+        return { x: rect.x + rect.w, y: rect.y + rect.h / 2 };
+      case 'bottom':
+        return { x: rect.x + rect.w / 2, y: rect.y + rect.h };
+      case 'left':
+        return { x: rect.x, y: rect.y + rect.h / 2 };
+    }
+  };
+
+  const getDirectionalOffset = (side: AnchorSide, dist: number): { dx: number; dy: number } => {
+    switch (side) {
+      case 'top':
+        return { dx: 0, dy: -dist };
+      case 'right':
+        return { dx: dist, dy: 0 };
+      case 'bottom':
+        return { dx: 0, dy: dist };
+      case 'left':
+        return { dx: -dist, dy: 0 };
+    }
+  };
+
+  const handleSelectAnchor = (cardId: string, side: AnchorSide) => {
     if (!connectMode) return;
-    if (!connectFromId) {
-      setConnectFromId(cardId);
+    if (!connectFrom) {
+      setConnectFrom({ cardId, side });
       return;
     }
-    if (connectFromId === cardId) {
-      setConnectFromId(null);
+    if (connectFrom.cardId === cardId && connectFrom.side === side) {
+      setConnectFrom(null);
       return;
     }
     const nextConn: BoardConnector = {
       id: `conn_${Date.now()}`,
-      fromId: connectFromId,
+      fromId: connectFrom.cardId,
       toId: cardId,
+      fromAnchor: connectFrom.side,
+      toAnchor: side,
       style: connectStyle,
       color: connectColor,
     };
     const next = [...connectors, nextConn];
     setConnectors(next);
     saveBoardConnectors(project.id, next);
-    setConnectFromId(null);
+    setConnectFrom(null);
+    setSelectedConnId(nextConn.id);
+  };
+
+  const updateConnector = (connId: string, patch: Partial<BoardConnector>) => {
+    setConnectors((prev) => {
+      const next = prev.map((c) => (c.id === connId ? { ...c, ...patch } : c));
+      saveBoardConnectors(project.id, next);
+      return next;
+    });
   };
 
   const handleDeleteConnector = (connId: string) => {
     const next = connectors.filter((c) => c.id !== connId);
     setConnectors(next);
     saveBoardConnectors(project.id, next);
+    if (selectedConnId === connId) setSelectedConnId(null);
   };
 
   const startDrag = (cardId: string, e: React.PointerEvent, fallbackIdx = 0) => {
@@ -710,8 +827,9 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
   const startCanvasPan = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget && e.button !== 1) return;
-    if (connectMode && e.target === e.currentTarget) {
-      setConnectFromId(null);
+    if (e.target === e.currentTarget) {
+      setSelectedConnId(null);
+      if (connectMode) setConnectFrom(null);
     }
     e.preventDefault();
     setIsPanning(true);
@@ -746,7 +864,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     if (!rect) return;
     const wx = Math.round((e.clientX - rect.left - panRef.current.x) / zoomRef.current);
     const wy = Math.round((e.clientY - rect.top - panRef.current.y) / zoomRef.current);
-    if (connectMode && connectFromId) {
+    if (connectMode && connectFrom) {
       setMouseWorld({ x: wx, y: wy });
     }
     const now = Date.now();
@@ -759,6 +877,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     (c) => c.projectId === project.id && c.member !== currentUser?.name
   );
 
+  const selectedConn = connectors.find((c) => c.id === selectedConnId) ?? null;
   const totalPins = projectDocs.length + pinnedPages.length;
 
   const getStrokeDash = (style: ConnectorStyle) => {
@@ -769,11 +888,70 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
   return (
     <div className="flex-1 flex flex-col min-h-0 relative">
-      {/* Connector Style Picker Sub-Pill */}
+      {/* Edit Existing Connector Pill OR New Connector Picker Pill */}
+      {selectedConn && !connectMode && (
+        <div className="fixed bottom-18 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-3 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-2 backdrop-blur-md">
+          <span className="text-[11px] font-semibold text-[#52525B] whitespace-nowrap">
+            Edit Line
+          </span>
+          <div className="w-px h-4 bg-[#E4E2DC]" />
+          {(['arrow', 'line', 'dashed', 'dotted'] as ConnectorStyle[]).map((st) => (
+            <button
+              key={st}
+              type="button"
+              onClick={() => updateConnector(selectedConn.id, { style: st })}
+              className={`px-2 py-0.5 text-[11px] font-medium rounded-full capitalize ${
+                selectedConn.style === st
+                  ? 'bg-[#0A5386] text-white'
+                  : 'text-[#52525B] hover:bg-black/5'
+              }`}
+            >
+              {st}
+            </button>
+          ))}
+          <div className="w-px h-4 bg-[#E4E2DC]" />
+          {CONNECTOR_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => updateConnector(selectedConn.id, { color: c })}
+              style={{ backgroundColor: c }}
+              className={`w-3.5 h-3.5 rounded-full border border-white/40 ${
+                selectedConn.color === c ? 'ring-2 ring-offset-1 ring-[#0A5386]' : ''
+              }`}
+            />
+          ))}
+          <div className="w-px h-4 bg-[#E4E2DC]" />
+          <button
+            type="button"
+            onClick={() =>
+              updateConnector(selectedConn.id, {
+                fromId: selectedConn.toId,
+                toId: selectedConn.fromId,
+                fromAnchor: selectedConn.toAnchor ?? 'left',
+                toAnchor: selectedConn.fromAnchor ?? 'right',
+              })
+            }
+            title="Reverse Arrow Direction"
+            className="p-1 rounded-full text-[#52525B] hover:text-[#18181B] hover:bg-black/5"
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDeleteConnector(selectedConn.id)}
+            title="Delete Line"
+            className="p-1 rounded-full text-[#DC2626] hover:bg-[#DC2626]/10"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {connectMode && (
         <div className="fixed bottom-18 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-3 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-2 backdrop-blur-md">
           <span className="text-[11px] font-semibold text-[#52525B] whitespace-nowrap">
-            {connectFromId ? 'Click target element' : 'Click first element'}
+            {connectFrom ? 'Click target edge dot' : 'Click any edge dot'}
           </span>
           <div className="w-px h-4 bg-[#E4E2DC]" />
           {(['arrow', 'line', 'dashed', 'dotted'] as ConnectorStyle[]).map((st) => (
@@ -820,12 +998,11 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           type="button"
           onClick={() => {
             setConnectMode((v) => !v);
-            setConnectFromId(null);
+            setConnectFrom(null);
+            setSelectedConnId(null);
           }}
           className={`ios-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-full ${
-            connectMode
-              ? 'bg-[#8B1E1E] text-white'
-              : 'bg-[#133F47] text-white'
+            connectMode ? 'bg-[#8B1E1E] text-white' : 'bg-[#133F47] text-white'
           }`}
         >
           <ArrowUpRight className="w-3.5 h-3.5" />
@@ -969,132 +1146,38 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           backgroundPosition: `${pan.x}px ${pan.y}px`,
         }}
       >
+        {/* NOTE: No will-change-transform so text & SVG re-rasterize crisply when zoomed in */}
         <div
           style={{
-            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: '0 0',
           }}
-          className="absolute top-0 left-0 will-change-transform select-text"
+          className="absolute top-0 left-0 select-text"
         >
-          {/* SVG Flow Arrows & Line Connectors Layer */}
-          <svg className="pointer-events-none overflow-visible absolute top-0 left-0 w-px h-px z-0">
-            <defs>
-              {CONNECTOR_COLORS.map((c) => {
-                const key = c.replace('#', '');
-                return (
-                  <marker
-                    key={key}
-                    id={`arrow-${key}`}
-                    viewBox="0 0 10 10"
-                    refX="8"
-                    refY="5"
-                    markerWidth="6"
-                    markerHeight="6"
-                    orient="auto-start-reverse"
-                  >
-                    <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill={c} />
-                  </marker>
-                );
-              })}
-            </defs>
-
-            {connectors.map((conn) => {
-              const from = getCardCenter(conn.fromId);
-              const to = getCardCenter(conn.toId);
-              if (!from || !to) return null;
-              const midX = (from.x + to.x) / 2;
-              const midY = (from.y + to.y) / 2;
-              const dx = Math.abs(to.x - from.x) * 0.4;
-              const d = `M ${from.x} ${from.y} C ${from.x + dx} ${from.y}, ${to.x - dx} ${to.y}, ${to.x} ${to.y}`;
-              const colorKey = conn.color.replace('#', '');
-              const hasArrow = conn.style === 'arrow' || conn.style === 'dashed';
-
-              return (
-                <g key={conn.id} className="group pointer-events-auto cursor-pointer">
-                  <path d={d} fill="none" stroke="transparent" strokeWidth={16} />
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke={conn.color}
-                    strokeWidth={2.5}
-                    strokeDasharray={getStrokeDash(conn.style)}
-                    markerEnd={hasArrow ? `url(#arrow-${colorKey})` : undefined}
-                  />
-                  <g
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteConnector(conn.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <circle cx={midX} cy={midY} r={10} fill="#18181B" />
-                    <path
-                      d={`M ${midX - 3.5} ${midY - 3.5} L ${midX + 3.5} ${midY + 3.5} M ${midX + 3.5} ${midY - 3.5} L ${midX - 3.5} ${midY + 3.5}`}
-                      stroke="#FFFFFF"
-                      strokeWidth={1.75}
-                      strokeLinecap="round"
-                    />
-                  </g>
-                </g>
-              );
-            })}
-
-            {/* Live Rubber-Band Preview While Connecting */}
-            {connectMode && connectFromId && mouseWorld && (() => {
-              const from = getCardCenter(connectFromId);
-              if (!from) return null;
-              const colorKey = connectColor.replace('#', '');
-              return (
-                <line
-                  x1={from.x}
-                  y1={from.y}
-                  x2={mouseWorld.x}
-                  y2={mouseWorld.y}
-                  stroke={connectColor}
-                  strokeWidth={2.5}
-                  strokeDasharray="6 5"
-                  markerEnd={
-                    connectStyle === 'arrow' || connectStyle === 'dashed'
-                      ? `url(#arrow-${colorKey})`
-                      : undefined
-                  }
-                />
-              );
-            })()}
-          </svg>
-
           {/* Pinned Design Inspo Images & Uploaded Files */}
           {projectDocs.map((doc, idx) => {
             const cardId = `doc_${doc.id}`;
             const pos = getPos(cardId, idx);
             const isImage = doc.mimeType.startsWith('image/');
             const badge = getFileBadge(doc.name);
-            const isSource = connectFromId === cardId;
+            const activeSide = connectFrom?.cardId === cardId ? connectFrom.side : null;
 
             if (isImage) {
               return (
                 <div
                   key={doc.id}
+                  ref={registerCardRef(cardId)}
                   style={{ left: pos.x, top: pos.y }}
-                  onClick={(e) => {
-                    if (connectMode) {
-                      e.stopPropagation();
-                      handleSelectPinForConnect(cardId);
-                    }
-                  }}
                   onPointerDown={(e) => startDrag(cardId, e, idx)}
                   className={`group absolute w-[240px] select-none rounded-xl ${
-                    connectMode
-                      ? 'cursor-crosshair'
-                      : 'cursor-grab active:cursor-grabbing'
-                  } ${
-                    isSource
-                      ? 'ring-2 ring-[#0A5386] ring-offset-2'
-                      : connectMode
-                      ? 'hover:ring-2 hover:ring-[#0A5386]/60'
-                      : ''
-                  }`}
+                    connectMode ? '' : 'cursor-grab active:cursor-grabbing'
+                  } ${activeSide ? 'ring-2 ring-[#0A5386]/70' : ''}`}
                 >
+                  <AnchorDots
+                    visible={connectMode}
+                    activeSide={activeSide}
+                    onSelectSide={(side) => handleSelectAnchor(cardId, side)}
+                  />
                   {!connectMode && (
                     <button
                       type="button"
@@ -1122,26 +1205,18 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
             return (
               <div
                 key={doc.id}
+                ref={registerCardRef(cardId)}
                 style={{ left: pos.x, top: pos.y }}
-                onClick={(e) => {
-                  if (connectMode) {
-                    e.stopPropagation();
-                    handleSelectPinForConnect(cardId);
-                  }
-                }}
                 onPointerDown={(e) => startDrag(cardId, e, idx)}
                 className={`group absolute w-[150px] flex flex-col items-center select-none rounded-xl ${
-                  connectMode
-                    ? 'cursor-crosshair'
-                    : 'cursor-grab active:cursor-grabbing'
-                } ${
-                  isSource
-                    ? 'ring-2 ring-[#0A5386] ring-offset-2'
-                    : connectMode
-                    ? 'hover:ring-2 hover:ring-[#0A5386]/60'
-                    : ''
-                }`}
+                  connectMode ? '' : 'cursor-grab active:cursor-grabbing'
+                } ${activeSide ? 'ring-2 ring-[#0A5386]/70' : ''}`}
               >
+                <AnchorDots
+                  visible={connectMode}
+                  activeSide={activeSide}
+                  onSelectSide={(side) => handleSelectAnchor(cardId, side)}
+                />
                 {!connectMode && (
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2 right-1 z-10 flex items-center gap-1">
                     <a
@@ -1184,25 +1259,136 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
             );
           })}
 
-          {/* Customizable Floating Pages (Rich Text + Paper Colors + Built-In Checklists) */}
+          {/* Customizable Floating Pages */}
           {pinnedPages.map((note, idx) => {
             const cardId = `page_${note.id}`;
             const fallbackPos = getPos(cardId, projectDocs.length + idx);
             const parsed = parsePinPageContent(note.content);
+            const activeSide = connectFrom?.cardId === cardId ? connectFrom.side : null;
             return (
               <FloatingPagePin
                 key={note.id}
                 note={note}
                 pos={positions[cardId] ?? fallbackPos}
                 connectActive={connectMode}
-                isConnectSource={connectFromId === cardId}
-                onSelectForConnect={() => handleSelectPinForConnect(cardId)}
+                activeAnchorSide={activeSide}
+                onSelectAnchor={(side) => handleSelectAnchor(cardId, side)}
+                onMeasure={registerCardRef(cardId)}
                 onDragStart={(e) => startDrag(cardId, e, projectDocs.length + idx)}
                 onUpdate={(content) => updateProjectNote(note.id, content)}
                 onDelete={() => queueDelete('note', note.id, parsed.title || 'Page')}
               />
             );
           })}
+
+          {/* Surface-Attached SVG Flow Arrows & Line Connectors (z-20 so arrowheads sit cleanly ON element edges!) */}
+          <svg className="pointer-events-none overflow-visible absolute top-0 left-0 w-px h-px z-20">
+            <defs>
+              {CONNECTOR_COLORS.map((c) => {
+                const key = c.replace('#', '');
+                return (
+                  <marker
+                    key={key}
+                    id={`arrow-${key}`}
+                    viewBox="0 0 10 10"
+                    refX="9"
+                    refY="5"
+                    markerWidth="6.5"
+                    markerHeight="6.5"
+                    orient="auto-start-reverse"
+                  >
+                    <path d="M 0 1.2 L 9 5 L 0 8.8 z" fill={c} />
+                  </marker>
+                );
+              })}
+            </defs>
+
+            {connectors.map((conn) => {
+              const rFrom = getCardRect(conn.fromId);
+              const rTo = getCardRect(conn.toId);
+              if (!rFrom || !rTo) return null;
+
+              const fromSide: AnchorSide = conn.fromAnchor ?? 'right';
+              const toSide: AnchorSide = conn.toAnchor ?? 'left';
+              const from = getAnchorPoint(rFrom, fromSide);
+              const to = getAnchorPoint(rTo, toSide);
+
+              const dist = Math.max(40, Math.hypot(to.x - from.x, to.y - from.y) * 0.35);
+              const off1 = getDirectionalOffset(fromSide, dist);
+              const off2 = getDirectionalOffset(toSide, dist);
+              const d = `M ${from.x} ${from.y} C ${from.x + off1.dx} ${from.y + off1.dy}, ${
+                to.x + off2.dx
+              } ${to.y + off2.dy}, ${to.x} ${to.y}`;
+
+              const colorKey = conn.color.replace('#', '');
+              const hasArrow = conn.style === 'arrow' || conn.style === 'dashed';
+              const isSelected = selectedConnId === conn.id;
+
+              return (
+                <g
+                  key={conn.id}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedConnId(conn.id);
+                    setConnectMode(false);
+                  }}
+                  className="pointer-events-auto cursor-pointer"
+                >
+                  <path d={d} fill="none" stroke="transparent" strokeWidth={18} />
+                  {isSelected && (
+                    <path
+                      d={d}
+                      fill="none"
+                      stroke={conn.color}
+                      strokeOpacity={0.25}
+                      strokeWidth={8}
+                      strokeLinecap="round"
+                    />
+                  )}
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke={conn.color}
+                    strokeWidth={isSelected ? 3 : 2.5}
+                    strokeDasharray={getStrokeDash(conn.style)}
+                    markerEnd={hasArrow ? `url(#arrow-${colorKey})` : undefined}
+                  />
+                  {/* Snap endpoint dots when selected */}
+                  {isSelected && (
+                    <>
+                      <circle cx={from.x} cy={from.y} r={4.5} fill="#FFFFFF" stroke={conn.color} strokeWidth={2} />
+                      <circle cx={to.x} cy={to.y} r={4.5} fill="#FFFFFF" stroke={conn.color} strokeWidth={2} />
+                    </>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Live Rubber-Band Preview While Connecting */}
+            {connectMode && connectFrom && mouseWorld && (() => {
+              const rFrom = getCardRect(connectFrom.cardId);
+              if (!rFrom) return null;
+              const from = getAnchorPoint(rFrom, connectFrom.side);
+              const colorKey = connectColor.replace('#', '');
+              return (
+                <line
+                  x1={from.x}
+                  y1={from.y}
+                  x2={mouseWorld.x}
+                  y2={mouseWorld.y}
+                  stroke={connectColor}
+                  strokeWidth={2.5}
+                  strokeDasharray="6 5"
+                  markerEnd={
+                    connectStyle === 'arrow' || connectStyle === 'dashed'
+                      ? `url(#arrow-${colorKey})`
+                      : undefined
+                  }
+                />
+              );
+            })()}
+          </svg>
 
           {/* Real-Time Multiplayer Cursors */}
           {remoteCursors.map((cursor) => {
