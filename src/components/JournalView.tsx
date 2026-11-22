@@ -41,6 +41,23 @@ export const JournalView: React.FC = () => {
     name: string;
     pageIds: string[];
   } | null>(null);
+  const [openingBook, setOpeningBook] = useState<{
+    name: string;
+    color: string;
+    firstPageId: string | null;
+  } | null>(null);
+  const openTimerRef = useRef<number | null>(null);
+
+  const triggerOpenBook = (book: { name: string; color: string }, firstPageId: string | null) => {
+    if (openTimerRef.current) window.clearTimeout(openTimerRef.current);
+    setOpeningBook({ name: book.name, color: book.color, firstPageId });
+    openTimerRef.current = window.setTimeout(() => {
+      setOpenBookName(book.name);
+      setSelectedId(firstPageId);
+      setOpeningBook(null);
+      openTimerRef.current = null;
+    }, 640);
+  };
 
   const [kindFilter, setKindFilter] = useState<'All' | JournalKind>('All');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -321,10 +338,7 @@ export const JournalView: React.FC = () => {
 
                         <button
                           type="button"
-                          onClick={() => {
-                            setOpenBookName(book.name);
-                            setSelectedId(pages[0]?.id ?? null);
-                          }}
+                          onClick={() => triggerOpenBook(book, pages[0]?.id ?? null)}
                           className="ios-press relative text-left focus:outline-none block"
                         >
                           <div className="absolute -bottom-1 inset-x-1 h-2.5 bg-black/45 blur-[4px] rounded-full transition-all duration-200 group-hover:scale-x-90 group-hover:opacity-60" />
@@ -562,6 +576,63 @@ export const JournalView: React.FC = () => {
           onConfirm={confirmDeleteBook}
           onCancel={() => setDeleteBookTarget(null)}
         />
+
+        {/* 3D Notebook Opening + Zoom-In Simulation */}
+        {openingBook && (
+          <div className="fixed inset-0 z-50 bg-black/35 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+            <div className="animate-book-stage relative w-52 h-72">
+              {/* Inside Cream Ruled Page */}
+              <div
+                className="absolute inset-0 rounded-r-xl rounded-l-[4px] ruled-paper shadow-2xl border border-[#E4E2DC] p-5 flex flex-col justify-between"
+              >
+                <div className="text-xs font-semibold text-[#18181B] opacity-75 truncate">
+                  {openingBook.name}
+                </div>
+                <div className="text-[10px] font-mono-num text-[#71717A] text-right">
+                  Opening...
+                </div>
+              </div>
+
+              {/* 3D Swinging Hardcover Front */}
+              <div
+                className="animate-book-cover absolute inset-0 rounded-r-xl rounded-l-[4px] p-5 flex flex-col justify-between text-white shadow-[6px_14px_30px_rgba(0,0,0,0.45)] overflow-hidden"
+                style={{ backgroundColor: openingBook.color, backfaceVisibility: 'hidden' }}
+              >
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.02) 45%, rgba(0,0,0,0.28) 100%)',
+                  }}
+                />
+                <div
+                  className="absolute inset-y-0 left-0 w-4 pointer-events-none"
+                  style={{
+                    background:
+                      'linear-gradient(90deg, rgba(0,0,0,0.45) 0%, rgba(255,255,255,0.18) 38%, rgba(0,0,0,0.12) 78%, rgba(0,0,0,0.5) 100%)',
+                  }}
+                />
+                <div className="absolute inset-y-0 left-4 w-[1px] bg-white/18 pointer-events-none" />
+                <div className="absolute inset-y-3 left-6 right-4 rounded-sm border border-white/12 pointer-events-none" />
+                <div
+                  className="absolute top-0 right-5 w-3.5 h-9 bg-[#8B1E1E] shadow-[0_2px_4px_rgba(0,0,0,0.35)] pointer-events-none"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%)',
+                  }}
+                />
+                <div className="relative z-10 pl-4 pr-2 pt-4">
+                  <h3 className="text-lg font-bold leading-snug text-white line-clamp-3">
+                    {openingBook.name}
+                  </h3>
+                </div>
+                <div className="relative z-10 pl-4 pr-1 flex items-center justify-between text-[11px] font-mono-num text-white/85 pt-2 border-t border-white/15">
+                  <span>LDOI Notebook</span>
+                  <BookOpen className="w-3.5 h-3.5 opacity-80" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
