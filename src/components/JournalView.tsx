@@ -8,7 +8,6 @@ import {
   List,
   ListOrdered,
   Plus,
-  RemoveFormatting,
   Search,
   Strikethrough,
   Trash2,
@@ -58,6 +57,7 @@ export const JournalView: React.FC = () => {
   const [tagInput, setTagInput] = useState('');
   const [fontColor, setFontColor] = useState('#18181B');
   const editorRef = useRef<HTMLDivElement | null>(null);
+  const savedRangeRef = useRef<Range | null>(null);
   const [deleteBookTarget, setDeleteBookTarget] = useState<{
     name: string;
     pageIds: string[];
@@ -314,9 +314,29 @@ export const JournalView: React.FC = () => {
     });
   };
 
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  };
+
   const execFormat = (command: string, value?: string) => {
     editorRef.current?.focus();
+    if (savedRangeRef.current) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedRangeRef.current);
+      }
+    }
+    try {
+      document.execCommand('styleWithCSS', false, 'true');
+    } catch {
+      // ignore if unsupported
+    }
     document.execCommand(command, false, value);
+    saveSelection();
     if (editorRef.current) {
       handleContentChange(editorRef.current.innerHTML);
     }
@@ -962,6 +982,7 @@ export const JournalView: React.FC = () => {
                   <select
                     aria-label="Font Family"
                     defaultValue=""
+                    onMouseDown={saveSelection}
                     onChange={(e) => {
                       if (e.target.value) execFormat('fontName', e.target.value);
                       e.target.value = '';
@@ -973,22 +994,6 @@ export const JournalView: React.FC = () => {
                     <option value="Georgia, serif">Serif</option>
                     <option value="JetBrains Mono, monospace">Mono</option>
                     <option value="Times New Roman, serif">Classic</option>
-                  </select>
-
-                  <select
-                    aria-label="Font Size"
-                    defaultValue=""
-                    onChange={(e) => {
-                      if (e.target.value) execFormat('fontSize', e.target.value);
-                      e.target.value = '';
-                    }}
-                    className="px-2 py-1 text-[11px] bg-white border border-[#E4E2DC] rounded text-[#18181B]"
-                  >
-                    <option value="">Size</option>
-                    <option value="2">Small</option>
-                    <option value="3">Normal</option>
-                    <option value="4">Large</option>
-                    <option value="5">Heading</option>
                   </select>
 
                   <div className="w-px h-4 bg-[#D6D0C2] mx-1" />
@@ -1065,36 +1070,46 @@ export const JournalView: React.FC = () => {
 
                   <div className="w-px h-4 bg-[#D6D0C2] mx-1" />
 
-                  <label
-                    title="Text Color"
-                    className="inline-flex items-center gap-1 px-1.5 py-1 rounded hover:bg-white cursor-pointer text-[11px] font-bold text-[#18181B]"
-                  >
-                    <span
-                      className="w-3.5 h-3.5 rounded-sm border border-black/15"
-                      style={{ backgroundColor: fontColor }}
-                    />
-                    <input
-                      type="color"
-                      value={fontColor}
-                      onChange={(e) => {
-                        setFontColor(e.target.value);
-                        execFormat('foreColor', e.target.value);
-                      }}
-                      className="sr-only"
-                    />
-                  </label>
-
-                  <button
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      execFormat('removeFormat');
-                    }}
-                    title="Clear Formatting"
-                    className="p-1.5 rounded hover:bg-white text-[#52525B]"
-                  >
-                    <RemoveFormatting className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1 px-1">
+                    {['#18181B', '#0A5386', '#8B1E1E', '#133F47'].map((ink) => (
+                      <button
+                        key={ink}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setFontColor(ink);
+                          execFormat('foreColor', ink);
+                        }}
+                        title={`Ink ${ink}`}
+                        style={{ backgroundColor: ink }}
+                        className={`w-3.5 h-3.5 rounded-full border border-black/20 ${
+                          fontColor === ink ? 'ring-2 ring-offset-1 ring-[#0A5386]' : ''
+                        }`}
+                      />
+                    ))}
+                    <label
+                      onMouseDown={saveSelection}
+                      title="Custom Text Color"
+                      className="ml-0.5 inline-flex items-center p-1 rounded hover:bg-white cursor-pointer"
+                    >
+                      <span
+                        className="w-3.5 h-3.5 rounded-full border border-black/20"
+                        style={{
+                          background:
+                            'conic-gradient(from 0deg, #ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444)',
+                        }}
+                      />
+                      <input
+                        type="color"
+                        value={fontColor}
+                        onChange={(e) => {
+                          setFontColor(e.target.value);
+                          execFormat('foreColor', e.target.value);
+                        }}
+                        className="sr-only"
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 {/* Ruled Rich-Text Writing Area */}
@@ -1102,9 +1117,14 @@ export const JournalView: React.FC = () => {
                   ref={editorRef}
                   contentEditable
                   suppressContentEditableWarning
-                  onInput={(e) => handleContentChange(e.currentTarget.innerHTML)}
+                  onMouseUp={saveSelection}
+                  onKeyUp={saveSelection}
+                  onInput={(e) => {
+                    saveSelection();
+                    handleContentChange(e.currentTarget.innerHTML);
+                  }}
                   data-placeholder="Write down your thoughts, technical findings, or notes..."
-                  className="w-full flex-1 min-h-[320px] p-3 text-sm text-[#18181B] ruled-paper border border-[#E4E2DC] rounded-lg focus:outline-none focus:border-[#0A5386] overflow-y-auto empty:before:content-[attr(data-placeholder)] empty:before:text-[#A1A1AA]"
+                  className="notebook-editor w-full flex-1 min-h-[320px] p-3 text-sm text-[#18181B] ruled-paper border border-[#E4E2DC] rounded-lg focus:outline-none focus:border-[#0A5386] overflow-y-auto empty:before:content-[attr(data-placeholder)] empty:before:text-[#A1A1AA]"
                 />
               </div>
             )}
