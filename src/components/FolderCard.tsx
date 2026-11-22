@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatInr, getDeadlineUrgency } from '../constants';
+import { getDeadlineUrgency } from '../constants';
 import type { MemberName, Project } from '../types';
 
 interface FolderCardProps {
@@ -18,11 +18,11 @@ interface StatusPalette {
 }
 
 const FOLDER_PALETTES: Record<Project['status'], StatusPalette> = {
-  Active: { top: '#1277B8', mid: '#0A5386', bottom: '#063354' },
-  Planning: { top: '#3D6F88', mid: '#254454', bottom: '#152934' },
-  Review: { top: '#B82D2D', mid: '#8B1E1E', bottom: '#580A0A' },
-  Completed: { top: '#206E69', mid: '#133F47', bottom: '#0B2429' },
-  Archived: { top: '#5D5D67', mid: '#3F3F46', bottom: '#232327' },
+  Active: { top: '#1B567C', mid: '#114161', bottom: '#0B2D45' },
+  Planning: { top: '#38596A', mid: '#254454', bottom: '#182E3A' },
+  Review: { top: '#962D2D', mid: '#7A1F1F', bottom: '#541212' },
+  Completed: { top: '#1F5652', mid: '#133F47', bottom: '#0C292E' },
+  Archived: { top: '#57534E', mid: '#44403C', bottom: '#292524' },
 };
 
 export const FolderCard: React.FC<FolderCardProps> = ({
@@ -68,13 +68,10 @@ export const FolderCard: React.FC<FolderCardProps> = ({
           />
         </svg>
 
-        {/* Tab Label (Status) & Upper-Right Quoted Amount */}
-        <div className="relative z-10 flex items-start justify-between px-3 pt-1">
+        {/* Tab Label (Status) */}
+        <div className="relative z-10 flex items-start justify-start px-3 pt-1">
           <span className="text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-black/25 text-white/95 border border-white/20 backdrop-blur-sm">
             {project.status}
-          </span>
-          <span className="mt-3.5 text-[10px] font-mono-num font-semibold text-white/95 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">
-            {formatInr(project.quotedAmountInr)}
           </span>
         </div>
 

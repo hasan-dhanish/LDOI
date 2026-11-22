@@ -16,6 +16,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
 
   const [title, setTitle] = useState('');
   const [clientName, setClientName] = useState('');
+  const [deadline, setDeadline] = useState('');
 
   const filtered = projects.filter((p) => {
     if (statusFilter !== 'All' && p.status !== statusFilter) return false;
@@ -40,13 +41,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
       status: 'Active',
       requirements: '',
       teamIdea: '',
-      deadline: '',
+      deadline,
       quotedAmountInr: 0,
       budgetNotes: '',
     });
 
     setTitle('');
     setClientName('');
+    setDeadline('');
     setShowCreate(false);
     onOpenProject(created.id);
   };
@@ -65,6 +67,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
           onClick={() => {
             setTitle('');
             setClientName('');
+            setDeadline('');
             setShowCreate(true);
           }}
           className="ios-press inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-[#0A5386] hover:bg-[#0C64A1] text-white rounded-lg shrink-0"
@@ -181,6 +184,18 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
                   placeholder="e.g. St. Xavier High School"
+                  className="w-full px-3 py-2 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#52525B] mb-1">
+                  Deadline
+                </label>
+                <input
+                  type="date"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
                 />
               </div>
