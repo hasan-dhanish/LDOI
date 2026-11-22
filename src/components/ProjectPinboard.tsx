@@ -20,6 +20,7 @@ import {
   Pen,
   Plus,
   Redo2,
+  RotateCcw,
   Square,
   StickyNote,
   Trash2,
@@ -89,13 +90,57 @@ function getFileBadge(name: string): string {
   return ext.toUpperCase().slice(0, 5) || 'FILE';
 }
 
-function buildRoundedOrthogonalPath(
+function isLightHex(hex: string): boolean {
+  const clean = hex.replace('#', '');
+  if (clean.length !== 6) return true;
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55;
+}
+
+const ColorWheelButton: React.FC<{
+  value: string;
+  isCustom: boolean;
+  onChange: (hex: string) => void;
+  title?: string;
+  sizeClass?: string;
+}> = ({ value, isCustom, onChange, title = 'Custom Color Wheel', sizeClass = 'w-4 h-4' }) => (
+  <label
+    title={title}
+    onPointerDown={(e) => e.stopPropagation()}
+    className={`relative ${sizeClass} rounded-full cursor-pointer shrink-0 transition-transform flex items-center justify-center ${
+      isCustom ? 'ring-2 ring-offset-1 ring-[#0A5386] scale-110' : 'hover:scale-110'
+    }`}
+    style={{
+      background:
+        'conic-gradient(#EF4444, #F59E0B, #10B981, #3B82F6, #8B5CF6, #EC4899, #EF4444)',
+    }}
+  >
+    <span
+      className="w-1.5 h-1.5 rounded-full border border-white/80 shadow-xs"
+      style={{ backgroundColor: value || '#FFFFFF' }}
+    />
+    <input
+      type="color"
+      value={value && value.startsWith('#') && value.length === 7 ? value : '#0A5386'}
+      onChange={(e) => onChange(e.target.value)}
+      className="sr-only"
+    />
+  </label>
+);
+
+function getConnectorPolylinePoints(
   from: { x: number; y: number },
   fromSide: AnchorSide,
   to: { x: number; y: number },
   toSide: AnchorSide,
-  radius = 12
-): string {
+  waypoints?: { x: number; y: number }[]
+): { x: number; y: number }[] {
+  if (waypoints && waypoints.length > 0) {
+    return [from, ...waypoints, to];
+  }
+
   const stub = 28;
   const dir = (side: AnchorSide) =>
     side === 'left'
@@ -128,7 +173,6 @@ function buildRoundedOrthogonalPath(
   }
   rawPts.push(p2, to);
 
-  // Deduplicate consecutive identical points
   const pts: { x: number; y: number }[] = [];
   for (const pt of rawPts) {
     const prev = pts[pts.length - 1];
@@ -136,8 +180,12 @@ function buildRoundedOrthogonalPath(
       pts.push(pt);
     }
   }
+  return pts;
+}
 
-  if (pts.length < 2) return `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
+function buildRoundedPathFromPoints(pts: { x: number; y: number }[], radius = 14): string {
+  if (pts.length < 2) return '';
+  if (pts.length === 2) return `M ${pts[0].x} ${pts[0].y} L ${pts[1].x} ${pts[1].y}`;
 
   let path = `M ${pts[0].x} ${pts[0].y}`;
   for (let i = 1; i < pts.length - 1; i++) {
@@ -315,6 +363,8 @@ const FloatingPagePin = React.forwardRef<
     }));
 
     const hasCustomTint = Boolean(bgColor);
+    const useDarkInk = hasCustomTint && isLightHex(bgColor);
+    const useLightInk = hasCustomTint && !isLightHex(bgColor);
 
     return (
       <div
@@ -331,7 +381,7 @@ const FloatingPagePin = React.forwardRef<
         onFocus={onFocusCard}
         className={`group absolute w-[300px] rounded-xl p-4 select-none transition-shadow ${
           hasCustomTint
-            ? 'shadow-[0_14px_34px_rgba(24,24,27,0.14)] text-[#18181B]'
+            ? `shadow-[0_14px_34px_rgba(24,24,27,0.14)] ${useLightInk ? 'text-[#F4F4F5]' : 'text-[#18181B]'}`
             : 'floating-sheet'
         } ${
           activeAnchorSide || isFocusedCard
@@ -379,9 +429,17 @@ const FloatingPagePin = React.forwardRef<
           }}
           placeholder="Page title..."
           className={`w-full text-sm font-bold bg-transparent focus:outline-none placeholder:text-[#A1A1AA] ${
-            hasCustomTint ? 'pinboard-tinted-input !text-[#18181B]' : 'text-[#18181B]'
+            useDarkInk
+              ? 'pinboard-tinted-input !text-[#18181B]'
+              : useLightInk
+              ? '!text-[#F4F4F5]'
+              : 'text-[#18181B]'
           }`}
-          style={hasCustomTint ? { backgroundColor: 'transparent', color: '#18181B' } : undefined}
+          style={
+            hasCustomTint
+              ? { backgroundColor: 'transparent', color: useLightInk ? '#F4F4F5' : '#18181B' }
+              : undefined
+          }
         />
 
         {/* Rich-Text Body */}
@@ -397,7 +455,7 @@ const FloatingPagePin = React.forwardRef<
           }}
           data-placeholder="Write notes..."
           className={`notebook-editor mt-1.5 w-full min-h-[76px] text-xs leading-relaxed bg-transparent focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-[#A1A1AA] select-text ${
-            hasCustomTint ? 'text-[#27272A]' : 'text-[#3F3F46]'
+            useLightInk ? 'text-[#E4E4E7]' : hasCustomTint ? 'text-[#27272A]' : 'text-[#3F3F46]'
           }`}
         />
 
@@ -424,7 +482,13 @@ const FloatingPagePin = React.forwardRef<
                   )}
                   <span
                     className={`text-xs leading-snug ${
-                      cp.done ? 'line-through text-[#71717A]' : 'text-[#18181B]'
+                      cp.done
+                        ? 'line-through text-[#71717A]'
+                        : useLightInk
+                        ? '!text-[#F4F4F5]'
+                        : useDarkInk
+                        ? '!text-[#18181B]'
+                        : 'text-[#18181B]'
                     }`}
                   >
                     {cp.text}
@@ -465,11 +529,11 @@ const FloatingPagePin = React.forwardRef<
                   onChange={(e) => setNewCheckItem(e.target.value)}
                   placeholder="+ Add checklist item..."
                   className={`w-full text-[11px] bg-transparent focus:outline-none placeholder:text-[#A1A1AA] ${
-                    hasCustomTint ? 'pinboard-tinted-input' : ''
+                    useDarkInk ? 'pinboard-tinted-input' : useLightInk ? '!text-[#F4F4F5]' : ''
                   }`}
                   style={
                     hasCustomTint
-                      ? { backgroundColor: 'transparent', color: '#18181B' }
+                      ? { backgroundColor: 'transparent', color: useLightInk ? '#F4F4F5' : '#18181B' }
                       : undefined
                   }
                 />
@@ -572,10 +636,13 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     panRef.current = pan;
   }, [pan]);
 
-  const snapshotNow = useCallback(
+    const snapshotNow = useCallback(
     (): BoardSnapshot => ({
       positions: { ...positions },
-      connectors: connectors.map((c) => ({ ...c })),
+      connectors: connectors.map((c) => ({
+        ...c,
+        waypoints: c.waypoints ? c.waypoints.map((w) => ({ ...w })) : undefined,
+      })),
       zones: zones.map((z) => ({ ...z })),
       strokes: strokes.map((s) => ({ ...s, points: [...s.points] })),
       hiddenIds: [...hiddenPinIds],
@@ -811,6 +878,81 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     setConnectors(next);
     saveBoardConnectors(project.id, next);
     if (selectedConnId === connId) setSelectedConnId(null);
+  };
+
+  const startWaypointDrag = (
+    conn: BoardConnector,
+    pts: { x: number; y: number }[],
+    mode: 'move' | 'insert',
+    index: number,
+    e: React.PointerEvent
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const startSnap = snapshotNow();
+    let moved = false;
+
+    const baseWaypoints = pts.slice(1, -1).map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }));
+    const initialMid =
+      mode === 'insert'
+        ? {
+            x: Math.round((pts[index].x + pts[index + 1].x) / 2),
+            y: Math.round((pts[index].y + pts[index + 1].y) / 2),
+          }
+        : null;
+
+    const targetWpIdx = mode === 'insert' ? index : index - 1;
+
+    const onMove = (ev: PointerEvent) => {
+      if (!moved) {
+        moved = true;
+        pushHistory(startSnap);
+      }
+      const wx = Math.round((ev.clientX - rect.left - panRef.current.x) / zoomRef.current);
+      const wy = Math.round((ev.clientY - rect.top - panRef.current.y) / zoomRef.current);
+      const nextWaypoints = baseWaypoints.map((w) => ({ ...w }));
+      if (mode === 'insert' && initialMid) {
+        nextWaypoints.splice(targetWpIdx, 0, { x: wx, y: wy });
+      } else {
+        nextWaypoints[targetWpIdx] = { x: wx, y: wy };
+      }
+      setConnectors((prev) => {
+        const next = prev.map((c) => (c.id === conn.id ? { ...c, waypoints: nextWaypoints } : c));
+        saveBoardConnectors(project.id, next);
+        return next;
+      });
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
+  const removeWaypoint = (
+    conn: BoardConnector,
+    pts: { x: number; y: number }[],
+    ptIndex: number
+  ) => {
+    pushHistory();
+    const nextWaypoints = pts
+      .slice(1, -1)
+      .filter((_, i) => i !== ptIndex - 1)
+      .map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }));
+    setConnectors((prev) => {
+      const next = prev.map((c) =>
+        c.id === conn.id
+          ? { ...c, waypoints: nextWaypoints.length > 0 ? nextWaypoints : undefined }
+          : c
+      );
+      saveBoardConnectors(project.id, next);
+      return next;
+    });
   };
 
   const startDrag = (cardId: string, e: React.PointerEvent, fallbackIdx = 0) => {
@@ -1426,7 +1568,23 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               }`}
             />
           ))}
+          <ColorWheelButton
+            value={selectedConn.color}
+            isCustom={!CONNECTOR_COLORS.includes(selectedConn.color)}
+            onChange={(hex) => updateConnector(selectedConn.id, { color: hex })}
+            title="Line Color Wheel"
+          />
           <div className="w-px h-4 bg-[#E4E2DC] mx-0.5" />
+          {selectedConn.waypoints && selectedConn.waypoints.length > 0 && (
+            <button
+              type="button"
+              onClick={() => updateConnector(selectedConn.id, { waypoints: undefined })}
+              title="Reset Line Flow"
+              className="p-1.5 rounded-full text-[#52525B] hover:text-[#18181B] hover:bg-black/5"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() =>
@@ -1435,6 +1593,9 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                 toId: selectedConn.fromId,
                 fromAnchor: selectedConn.toAnchor ?? 'left',
                 toAnchor: selectedConn.fromAnchor ?? 'right',
+                waypoints: selectedConn.waypoints
+                  ? [...selectedConn.waypoints].reverse()
+                  : undefined,
               })
             }
             title="Reverse Arrow Direction"
@@ -1533,6 +1694,21 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               />
             );
           })}
+          {(() => {
+            const activeColor = parsePinPageContent(focusedPage.content).bgColor ?? '';
+            const isPreset = PAGE_PAPER_COLORS.some((c) => c.hex === activeColor);
+            return (
+              <ColorWheelButton
+                value={activeColor || '#FCFBF8'}
+                isCustom={Boolean(activeColor) && !isPreset}
+                onChange={(hex) => {
+                  pushHistory();
+                  pageHandlesRef.current[focusedPage.id]?.setPaperColor(hex);
+                }}
+                title="Page Paper Color Wheel"
+              />
+            );
+          })()}
           <div className="w-px h-4 bg-[#E4E2DC] mx-0.5" />
           <button
             type="button"
@@ -1570,6 +1746,12 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               }`}
             />
           ))}
+          <ColorWheelButton
+            value={selectedZone.color}
+            isCustom={!CONNECTOR_COLORS.includes(selectedZone.color)}
+            onChange={(hex) => updateZone(selectedZone.id, { color: hex }, true)}
+            title="Zone Color Wheel"
+          />
           <div className="w-px h-4 bg-[#E4E2DC]" />
           <button
             type="button"
@@ -1611,6 +1793,12 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               }`}
             />
           ))}
+          <ColorWheelButton
+            value={connectColor}
+            isCustom={!CONNECTOR_COLORS.includes(connectColor)}
+            onChange={(hex) => setConnectColor(hex)}
+            title="Connector Color Wheel"
+          />
         </div>
       )}
 
@@ -1627,6 +1815,12 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               }`}
             />
           ))}
+          <ColorWheelButton
+            value={penColor}
+            isCustom={!['#18181B', '#0A5386', '#8B1E1E', '#133F47', '#F4F4F5'].includes(penColor)}
+            onChange={(hex) => setPenColor(hex)}
+            title="Pen Color Wheel"
+          />
           <div className="w-px h-4 bg-[#E4E2DC]" />
           {[2, 4, 7].map((w) => (
             <button
@@ -2041,7 +2235,9 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           {/* Orthogonal Rounded-Corner SVG Connectors & Freehand Pen Layer */}
           <svg className="pointer-events-none overflow-visible absolute top-0 left-0 w-px h-px z-10">
             <defs>
-              {CONNECTOR_COLORS.map((c) => {
+              {Array.from(
+                new Set([...CONNECTOR_COLORS, connectColor, ...connectors.map((c) => c.color)])
+              ).map((c) => {
                 const key = c.replace('#', '');
                 return (
                   <marker
@@ -2070,7 +2266,14 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               const toSide: AnchorSide = conn.toAnchor ?? 'left';
               const from = getAnchorPoint(rFrom, fromSide);
               const to = getAnchorPoint(rTo, toSide);
-              const d = buildRoundedOrthogonalPath(from, fromSide, to, toSide, 14);
+              const pts = getConnectorPolylinePoints(
+                from,
+                fromSide,
+                to,
+                toSide,
+                conn.waypoints
+              );
+              const d = buildRoundedPathFromPoints(pts, 14);
 
               const colorKey = conn.color.replace('#', '');
               const hasArrow = conn.style === 'arrow' || conn.style === 'dashed';
@@ -2110,8 +2313,75 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                   />
                   {isSelected && (
                     <>
-                      <circle cx={from.x} cy={from.y} r={4.5} fill="#FFFFFF" stroke={conn.color} strokeWidth={2} />
-                      <circle cx={to.x} cy={to.y} r={4.5} fill="#FFFFFF" stroke={conn.color} strokeWidth={2} />
+                      <circle
+                        cx={from.x}
+                        cy={from.y}
+                        r={4.5}
+                        fill="#FFFFFF"
+                        stroke={conn.color}
+                        strokeWidth={2}
+                      />
+                      <circle
+                        cx={to.x}
+                        cy={to.y}
+                        r={4.5}
+                        fill="#FFFFFF"
+                        stroke={conn.color}
+                        strokeWidth={2}
+                      />
+
+                      {/* Segment Midpoint Handles: drag to pull a new bend anywhere */}
+                      {pts.slice(0, -1).map((a, segIdx) => {
+                        const b = pts[segIdx + 1];
+                        if (Math.hypot(b.x - a.x, b.y - a.y) < 28) return null;
+                        const mx = (a.x + b.x) / 2;
+                        const my = (a.y + b.y) / 2;
+                        return (
+                          <g
+                            key={`seg-${segIdx}`}
+                            onPointerDown={(e) => startWaypointDrag(conn, pts, 'insert', segIdx, e)}
+                            className="cursor-grab active:cursor-grabbing"
+                          >
+                            <circle
+                              cx={mx}
+                              cy={my}
+                              r={5.5}
+                              fill={conn.color}
+                              fillOpacity={0.18}
+                              stroke={conn.color}
+                              strokeWidth={1.5}
+                            />
+                            <path
+                              d={`M ${mx - 2.5} ${my} L ${mx + 2.5} ${my} M ${mx} ${my - 2.5} L ${mx} ${my + 2.5}`}
+                              stroke={conn.color}
+                              strokeWidth={1.4}
+                              strokeLinecap="round"
+                            />
+                          </g>
+                        );
+                      })}
+
+                      {/* Existing Bend Handles: drag to reshape, double-click to remove */}
+                      {pts.slice(1, -1).map((pt, i) => {
+                        const ptIdx = i + 1;
+                        return (
+                          <circle
+                            key={`wp-${ptIdx}`}
+                            cx={pt.x}
+                            cy={pt.y}
+                            r={5.5}
+                            fill="#FFFFFF"
+                            stroke={conn.color}
+                            strokeWidth={2.2}
+                            onPointerDown={(e) => startWaypointDrag(conn, pts, 'move', ptIdx, e)}
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              removeWaypoint(conn, pts, ptIdx);
+                            }}
+                            className="cursor-move"
+                          />
+                        );
+                      })}
                     </>
                   )}
                 </g>
