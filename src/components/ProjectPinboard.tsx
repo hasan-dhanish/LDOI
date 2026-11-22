@@ -379,7 +379,7 @@ const FloatingPagePin = React.forwardRef<
           }}
           placeholder="Page title..."
           className={`w-full text-sm font-bold bg-transparent focus:outline-none placeholder:text-[#A1A1AA] ${
-            hasCustomTint ? '!text-[#18181B]' : 'text-[#18181B]'
+            hasCustomTint ? 'pinboard-tinted-input !text-[#18181B]' : 'text-[#18181B]'
           }`}
           style={hasCustomTint ? { backgroundColor: 'transparent', color: '#18181B' } : undefined}
         />
@@ -464,7 +464,9 @@ const FloatingPagePin = React.forwardRef<
                   value={newCheckItem}
                   onChange={(e) => setNewCheckItem(e.target.value)}
                   placeholder="+ Add checklist item..."
-                  className="w-full text-[11px] bg-transparent focus:outline-none placeholder:text-[#A1A1AA]"
+                  className={`w-full text-[11px] bg-transparent focus:outline-none placeholder:text-[#A1A1AA] ${
+                    hasCustomTint ? 'pinboard-tinted-input' : ''
+                  }`}
                   style={
                     hasCustomTint
                       ? { backgroundColor: 'transparent', color: '#18181B' }

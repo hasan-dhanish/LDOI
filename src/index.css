@@ -223,6 +223,16 @@
   border-color: rgba(255, 255, 255, 0.14) !important;
 }
 
+.dark-theme input.bg-transparent,
+.dark-theme textarea.bg-transparent,
+.dark-theme select.bg-transparent {
+  background-color: transparent !important;
+}
+
+.dark-theme input.pinboard-tinted-input {
+  color: #18181b !important;
+}
+
 .dark-theme .bg-white,
 .dark-theme .bg-white\/80,
 .dark-theme .bg-white\/70,
