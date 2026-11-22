@@ -146,12 +146,10 @@
   pointer-events: none;
   opacity: 0;
   border-radius: 9999px;
-  background: radial-gradient(
-    ellipse 60% 68% at 50% 34%,
-    rgba(255, 242, 214, 0.3) 0%,
-    rgba(255, 234, 196, 0.13) 45%,
-    transparent 76%
-  );
+  background: radial-gradient(ellipse 60% 68% at 50% 34%,
+      rgba(255, 242, 214, 0.3) 0%,
+      rgba(255, 234, 196, 0.13) 45%,
+      transparent 76%);
   filter: blur(22px);
   transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -366,22 +364,22 @@
 }
 
 .dark-theme .notebook-pages-pane {
-  background-color: #171a22;
+  background-color: #252b37;
   background-image: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.02) 0%,
+    rgba(255, 255, 255, 0.03) 0%,
     transparent 24%,
-    rgba(0, 0, 0, 0.45) 100%
+    rgba(0, 0, 0, 0.35) 100%
   );
-  border-color: #272b36;
+  border-color: #363e4f;
 }
 
 .dark-theme .notebook-editor-pane {
-  background-color: #1b1f29;
+  background-color: #2b3240;
   background-image: linear-gradient(
     90deg,
-    rgba(0, 0, 0, 0.48) 0%,
-    rgba(255, 255, 255, 0.025) 12%,
+    rgba(0, 0, 0, 0.38) 0%,
+    rgba(255, 255, 255, 0.03) 12%,
     transparent 45%
   );
 }
@@ -395,11 +393,11 @@
 }
 
 .dark-theme .notebook-cover-shell {
-  background: linear-gradient(145deg, #2b2621 0%, #1b1815 55%, #100e0c 100%);
-  border-color: rgba(255, 232, 200, 0.12);
+  background: linear-gradient(145deg, #3c3630 0%, #28231f 55%, #191512 100%);
+  border-color: rgba(255, 232, 200, 0.16);
   box-shadow:
-    inset 0 1px 1px rgba(255, 232, 200, 0.1),
-    inset 0 -2px 6px rgba(0, 0, 0, 0.75),
+    inset 0 1px 1px rgba(255, 232, 200, 0.14),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.65),
     0 26px 60px rgba(0, 0, 0, 0.72);
 }
 
@@ -413,60 +411,60 @@
 }
 
 .dark-theme .notebook-spread {
-  background-color: #171a22;
+  background-color: #252b37;
   box-shadow:
-    -3px 0 0 #262b38,
-    -6px 0 0 #1b1f29,
-    3px 0 0 #262b38,
-    6px 0 0 #1b1f29,
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    -3px 0 0 #3a4254,
+    -6px 0 0 #2d3444,
+    3px 0 0 #3a4254,
+    6px 0 0 #2d3444,
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .dark-theme .notebook-page-item {
-  background-color: rgba(34, 38, 49, 0.75);
-  border-color: #2c3140;
+  background-color: rgba(50, 58, 74, 0.78);
+  border-color: #414b60;
 }
 
 .dark-theme .notebook-page-item:hover {
-  background-color: #262b38;
+  background-color: #3a4356;
 }
 
 .dark-theme .notebook-page-item-active {
-  background-color: #232a3a;
-  border-color: #38bdf8;
+  background-color: #38445c;
+  border-color: #60a5fa;
 }
 
 .dark-theme .notebook-toolbar {
-  background-color: #242834;
-  border-color: #323848;
+  background-color: #353d4e;
+  border-color: #455066;
 }
 
 .dark-theme .notebook-tool-btn {
-  color: #e4e4e7;
+  color: #f4f4f5;
 }
 
 .dark-theme .notebook-tool-btn:hover {
-  background-color: #323848;
+  background-color: #465168;
 }
 
 .dark-theme .ruled-paper {
-  background-color: #1a1e28;
+  background-color: #2f3646;
   background-image:
     linear-gradient(
       to right,
       transparent 34px,
-      rgba(185, 28, 28, 0.28) 35px,
+      rgba(220, 70, 70, 0.34) 35px,
       transparent 36px
     ),
     linear-gradient(
       to bottom,
       transparent 30px,
-      rgba(255, 255, 255, 0.085) 31px,
+      rgba(255, 255, 255, 0.11) 31px,
       transparent 32px
     );
   padding-left: 44px !important;
   color: #f4f4f5;
-  border-color: #2c3140;
+  border-color: #414b60;
 }
 
 .dark-theme .notebook-editor hr {
