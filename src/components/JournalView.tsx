@@ -446,7 +446,7 @@ export const JournalView: React.FC = () => {
           <div className="space-y-10">
             {shelfRows.map((rowBooks, rowIdx) => (
               <div key={rowIdx} className="pt-2">
-                <div className="relative z-10 flex flex-wrap items-end gap-5 sm:gap-7 px-5 sm:px-8">
+                <div className="flex flex-wrap items-end gap-5 sm:gap-7 px-4 sm:px-6">
                   {rowBooks.map((book) => {
                     const pages = journalEntries.filter((e) => getEntryBookName(e) === book.name);
                     return (
@@ -503,7 +503,7 @@ export const JournalView: React.FC = () => {
                     );
                   })}
                 </div>
-                <div className="book-shelf-ledge w-full relative z-0 mt-2.5" />
+                <div className="book-shelf-ledge w-full relative z-10" />
               </div>
             ))}
           </div>
