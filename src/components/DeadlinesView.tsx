@@ -47,7 +47,7 @@ export const DeadlinesView: React.FC<DeadlinesViewProps> = ({ onOpenProject }) =
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E4E2DC]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
           <h1 className="text-xl font-semibold text-[#18181B]">Deadline Monitor</h1>
           <p className="text-xs text-[#71717A] mt-0.5">

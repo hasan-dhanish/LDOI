@@ -303,7 +303,7 @@ export const JournalView: React.FC = () => {
 
     return (
       <div className="space-y-7">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b border-[#E4E2DC]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-1">
           <div>
             <h1 className="text-xl font-semibold text-[#18181B]">
               Live Notes &amp; Idea Books
@@ -735,7 +735,7 @@ export const JournalView: React.FC = () => {
   // OPEN BOOK VIEW (Separate Pages Inside Selected Book)
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E4E2DC]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div className="flex items-center gap-3">
           <button
             type="button"

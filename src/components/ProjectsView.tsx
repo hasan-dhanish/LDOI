@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { FolderPlus, Search, X } from 'lucide-react';
 import { useLdoi } from '../context/LdoiContext';
-import type { Project, ProjectStatus } from '../types';
-import { AnimatedDeleteButton } from './AnimatedDeleteButton';
-import { ConfirmModal } from './ConfirmModal';
+import type { ProjectStatus } from '../types';
 import { FolderCard } from './FolderCard';
 
 interface ProjectsViewProps {
@@ -11,13 +9,10 @@ interface ProjectsViewProps {
 }
 
 export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => {
-  const { projects, workflowSteps, documents, quotations, createProject, deleteProject } =
-    useLdoi();
+  const { projects, workflowSteps, documents, quotations, createProject } = useLdoi();
   const [statusFilter, setStatusFilter] = useState<'All' | ProjectStatus>('All');
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [deleteMode, setDeleteMode] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
 
   const [title, setTitle] = useState('');
   const [clientName, setClientName] = useState('');
@@ -58,57 +53,26 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E4E2DC]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
           <h1 className="text-xl font-semibold text-[#18181B]">Projects</h1>
           <p className="text-xs text-[#71717A] mt-0.5">
             Create a project folder and pin pages, checklists, design inspo, and files onto its infinite board.
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {deleteMode ? (
-            <button
-              type="button"
-              onClick={() => setDeleteMode(false)}
-              className="ios-press px-3 py-1.5 text-xs font-semibold bg-[#8B1E1E] text-white rounded-full"
-            >
-              Done Deleting
-            </button>
-          ) : (
-            <AnimatedDeleteButton
-              size="sm"
-              onClick={() => setDeleteMode(true)}
-              title="Delete a project"
-            />
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              setDeleteMode(false);
-              setTitle('');
-              setClientName('');
-              setShowCreate(true);
-            }}
-            className="ios-press inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-[#0A5386] hover:bg-[#0C64A1] text-white rounded-lg"
-          >
-            <FolderPlus className="w-3.5 h-3.5" />
-            New Project
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setTitle('');
+            setClientName('');
+            setShowCreate(true);
+          }}
+          className="ios-press inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-[#0A5386] hover:bg-[#0C64A1] text-white rounded-lg shrink-0"
+        >
+          <FolderPlus className="w-3.5 h-3.5" />
+          New Project
+        </button>
       </div>
-
-      {deleteMode && (
-        <div className="px-4 py-2 rounded-xl bg-[#8B1E1E]/10 border border-[#8B1E1E]/25 text-xs font-medium text-[#DC2626] flex items-center justify-between">
-          <span>Click any project folder to delete it.</span>
-          <button
-            type="button"
-            onClick={() => setDeleteMode(false)}
-            className="text-xs font-semibold underline"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 justify-between">
@@ -118,11 +82,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
               key={s}
               type="button"
               onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
-                statusFilter === s
-                  ? 'bg-[#18181B] text-white border-[#18181B]'
-                  : 'bg-white text-[#52525B] border-[#E4E2DC] hover:border-[#A1A1AA]'
-              }`}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${statusFilter === s
+                ? 'bg-[#18181B] text-white border-[#18181B]'
+                : 'bg-white text-[#52525B] border-[#E4E2DC] hover:border-[#A1A1AA]'
+                }`}
             >
               {s}
             </button>
@@ -160,25 +123,15 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
             const assignees = Array.from(new Set(steps.map((s) => s.assignee)));
 
             return (
-              <div
+              <FolderCard
                 key={p.id}
-                className={deleteMode ? 'ring-2 ring-[#DC2626]/70 rounded-2xl' : ''}
-              >
-                <FolderCard
-                  project={p}
-                  taskCount={steps.length}
-                  completedCount={done}
-                  docCount={docCount}
-                  assignees={assignees}
-                  onClick={() => {
-                    if (deleteMode) {
-                      setDeleteTarget(p);
-                      return;
-                    }
-                    onOpenProject(p.id);
-                  }}
-                />
-              </div>
+                project={p}
+                taskCount={steps.length}
+                completedCount={done}
+                docCount={docCount}
+                assignees={assignees}
+                onClick={() => onOpenProject(p.id)}
+              />
             );
           })}
         </div>
@@ -251,25 +204,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenProject }) => 
           </form>
         </div>
       )}
-
-      <ConfirmModal
-        open={Boolean(deleteTarget)}
-        title="Delete Project"
-        message={
-          deleteTarget
-            ? `Delete "${deleteTarget.title}" and all its pinned pages, files, and notes?`
-            : ''
-        }
-        confirmLabel="Delete Project"
-        onConfirm={async () => {
-          if (!deleteTarget) return;
-          const id = deleteTarget.id;
-          setDeleteTarget(null);
-          setDeleteMode(false);
-          await deleteProject(id);
-        }}
-        onCancel={() => setDeleteTarget(null)}
-      />
     </div>
   );
 };
