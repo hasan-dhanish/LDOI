@@ -321,6 +321,102 @@
   padding-left: 1.5rem;
 }
 
+.notebook-editor hr {
+  border: 0;
+  border-top: 1px solid rgba(140, 128, 110, 0.35);
+  margin: 14px 0;
+}
+
+/* Open Notebook Light & Dark Theme Panes & Toolbar */
+.notebook-pages-pane {
+  background-color: #f7f4ec;
+  border-color: #d6d0c2;
+}
+
+.notebook-editor-pane {
+  background-color: #fcfbf8;
+}
+
+.notebook-page-item {
+  background-color: rgba(255, 255, 255, 0.72);
+  border-color: #e4e2dc;
+}
+
+.notebook-page-item:hover {
+  background-color: #ffffff;
+}
+
+.notebook-page-item-active {
+  background-color: #ffffff;
+  border-color: #0a5386;
+}
+
+.notebook-toolbar {
+  background-color: #efeae0;
+  border: 1px solid #ded8ca;
+}
+
+.notebook-tool-btn {
+  color: #18181b;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.notebook-tool-btn:hover {
+  background-color: #ffffff;
+}
+
+.dark-theme .notebook-pages-pane {
+  background-color: #16181f;
+  border-color: #272b36;
+}
+
+.dark-theme .notebook-editor-pane {
+  background-color: #1c1f28;
+}
+
+.dark-theme .notebook-page-item {
+  background-color: rgba(34, 38, 49, 0.75);
+  border-color: #2c3140;
+}
+
+.dark-theme .notebook-page-item:hover {
+  background-color: #262b38;
+}
+
+.dark-theme .notebook-page-item-active {
+  background-color: #232a3a;
+  border-color: #38bdf8;
+}
+
+.dark-theme .notebook-toolbar {
+  background-color: #242834;
+  border-color: #323848;
+}
+
+.dark-theme .notebook-tool-btn {
+  color: #e4e4e7;
+}
+
+.dark-theme .notebook-tool-btn:hover {
+  background-color: #323848;
+}
+
+.dark-theme .ruled-paper {
+  background-color: #1e222c;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 30px,
+    rgba(255, 255, 255, 0.06) 31px,
+    transparent 32px
+  );
+  color: #f4f4f5;
+  border-color: #2c3140;
+}
+
+.dark-theme .notebook-editor hr {
+  border-top-color: rgba(255, 255, 255, 0.14);
+}
+
 /* Frosted Glassmorphic Card */
 .paper-card {
   background: linear-gradient(145deg,

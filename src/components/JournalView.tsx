@@ -1,12 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   ArrowLeft,
   Bold,
   BookOpen,
   Check,
+  Highlighter,
   Italic,
   List,
   ListOrdered,
+  Minus,
   Plus,
   Search,
   Strikethrough,
@@ -832,7 +837,7 @@ export const JournalView: React.FC = () => {
           </div>
 
           {/* Left Page: Pages Index Inside This Book */}
-          <div className="lg:col-span-4 bg-[#F7F4EC] border-b lg:border-b-0 lg:border-r border-[#D6D0C2] p-5 lg:pr-8 flex flex-col shadow-[inset_-16px_0_24px_-16px_rgba(0,0,0,0.18)]">
+          <div className="lg:col-span-4 notebook-pages-pane border-b lg:border-b-0 lg:border-r p-5 lg:pr-8 flex flex-col shadow-[inset_-16px_0_24px_-16px_rgba(0,0,0,0.18)]">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-[#52525B]">
                 Pages ({bookPages.length})
@@ -853,10 +858,9 @@ export const JournalView: React.FC = () => {
                       key={entry.id}
                       type="button"
                       onClick={() => setSelectedId(entry.id)}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${selected
-                        ? 'bg-white border-[#0A5386] shadow-2xs'
-                        : 'bg-white/70 border-[#E4E2DC] hover:bg-white'
-                        }`}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                        selected ? 'notebook-page-item-active shadow-2xs' : 'notebook-page-item'
+                      }`}
                     >
                       <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider">
                         <span className="text-[#0A5386]">Page {idx + 1}</span>
@@ -888,7 +892,7 @@ export const JournalView: React.FC = () => {
           </div>
 
           {/* Right Page: Ruled Paper Rich-Text Live Editor */}
-          <div className="lg:col-span-8 bg-[#FCFBF8] p-6 lg:pl-10 flex flex-col shadow-[inset_16px_0_24px_-16px_rgba(0,0,0,0.16)]">
+          <div className="lg:col-span-8 notebook-editor-pane p-6 lg:pl-10 flex flex-col shadow-[inset_16px_0_24px_-16px_rgba(0,0,0,0.16)]">
             {!activeEntry ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center text-[#71717A]">
                 <BookOpen className="w-7 h-7 mb-2" />
@@ -977,27 +981,8 @@ export const JournalView: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Rich Text Formatting Toolbar */}
-                <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 rounded-lg bg-[#F4F1EA] border border-[#E4E2DC]">
-                  <select
-                    aria-label="Font Family"
-                    defaultValue=""
-                    onMouseDown={saveSelection}
-                    onChange={(e) => {
-                      if (e.target.value) execFormat('fontName', e.target.value);
-                      e.target.value = '';
-                    }}
-                    className="px-2 py-1 text-[11px] bg-white border border-[#E4E2DC] rounded text-[#18181B]"
-                  >
-                    <option value="">Font</option>
-                    <option value="Plus Jakarta Sans, sans-serif">Sans</option>
-                    <option value="Georgia, serif">Serif</option>
-                    <option value="JetBrains Mono, monospace">Mono</option>
-                    <option value="Times New Roman, serif">Classic</option>
-                  </select>
-
-                  <div className="w-px h-4 bg-[#D6D0C2] mx-1" />
-
+                {/* Floating Pill Rich-Text Formatting Toolbar */}
+                <div className="notebook-toolbar flex flex-wrap items-center gap-1 px-2.5 py-1.5 rounded-full w-fit max-w-full shadow-xs">
                   <button
                     type="button"
                     onMouseDown={(e) => {
@@ -1005,7 +990,7 @@ export const JournalView: React.FC = () => {
                       execFormat('bold');
                     }}
                     title="Bold"
-                    className="p-1.5 rounded hover:bg-white text-[#18181B]"
+                    className="notebook-tool-btn p-1.5 rounded-full"
                   >
                     <Bold className="w-3.5 h-3.5" />
                   </button>
@@ -1016,7 +1001,7 @@ export const JournalView: React.FC = () => {
                       execFormat('italic');
                     }}
                     title="Italic"
-                    className="p-1.5 rounded hover:bg-white text-[#18181B]"
+                    className="notebook-tool-btn p-1.5 rounded-full"
                   >
                     <Italic className="w-3.5 h-3.5" />
                   </button>
@@ -1027,7 +1012,7 @@ export const JournalView: React.FC = () => {
                       execFormat('underline');
                     }}
                     title="Underline"
-                    className="p-1.5 rounded hover:bg-white text-[#18181B]"
+                    className="notebook-tool-btn p-1.5 rounded-full"
                   >
                     <Underline className="w-3.5 h-3.5" />
                   </button>
@@ -1038,12 +1023,37 @@ export const JournalView: React.FC = () => {
                       execFormat('strikeThrough');
                     }}
                     title="Strikethrough"
-                    className="p-1.5 rounded hover:bg-white text-[#18181B]"
+                    className="notebook-tool-btn p-1.5 rounded-full"
                   >
                     <Strikethrough className="w-3.5 h-3.5" />
                   </button>
 
-                  <div className="w-px h-4 bg-[#D6D0C2] mx-1" />
+                  <div className="w-px h-4 bg-current opacity-15 mx-1" />
+
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      execFormat('hiliteColor', '#FEF08A');
+                    }}
+                    title="Highlight Selection"
+                    className="notebook-tool-btn p-1.5 rounded-full"
+                  >
+                    <Highlighter className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      execFormat('insertHorizontalRule');
+                    }}
+                    title="Insert Divider Line"
+                    className="notebook-tool-btn p-1.5 rounded-full"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div className="w-px h-4 bg-current opacity-15 mx-1" />
 
                   <button
                     type="button"
@@ -1052,7 +1062,7 @@ export const JournalView: React.FC = () => {
                       execFormat('insertUnorderedList');
                     }}
                     title="Bullet List"
-                    className="p-1.5 rounded hover:bg-white text-[#18181B]"
+                    className="notebook-tool-btn p-1.5 rounded-full"
                   >
                     <List className="w-3.5 h-3.5" />
                   </button>
@@ -1063,12 +1073,48 @@ export const JournalView: React.FC = () => {
                       execFormat('insertOrderedList');
                     }}
                     title="Numbered List"
-                    className="p-1.5 rounded hover:bg-white text-[#18181B]"
+                    className="notebook-tool-btn p-1.5 rounded-full"
                   >
                     <ListOrdered className="w-3.5 h-3.5" />
                   </button>
 
-                  <div className="w-px h-4 bg-[#D6D0C2] mx-1" />
+                  <div className="w-px h-4 bg-current opacity-15 mx-1" />
+
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      execFormat('justifyLeft');
+                    }}
+                    title="Align Left"
+                    className="notebook-tool-btn p-1.5 rounded-full"
+                  >
+                    <AlignLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      execFormat('justifyCenter');
+                    }}
+                    title="Align Center"
+                    className="notebook-tool-btn p-1.5 rounded-full"
+                  >
+                    <AlignCenter className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      execFormat('justifyRight');
+                    }}
+                    title="Align Right"
+                    className="notebook-tool-btn p-1.5 rounded-full"
+                  >
+                    <AlignRight className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div className="w-px h-4 bg-current opacity-15 mx-1" />
 
                   <div className="flex items-center gap-1 px-1">
                     {['#18181B', '#0A5386', '#8B1E1E', '#133F47'].map((ink) => (
@@ -1082,7 +1128,7 @@ export const JournalView: React.FC = () => {
                         }}
                         title={`Ink ${ink}`}
                         style={{ backgroundColor: ink }}
-                        className={`w-3.5 h-3.5 rounded-full border border-black/20 ${
+                        className={`w-3.5 h-3.5 rounded-full border border-white/30 ${
                           fontColor === ink ? 'ring-2 ring-offset-1 ring-[#0A5386]' : ''
                         }`}
                       />
@@ -1090,10 +1136,10 @@ export const JournalView: React.FC = () => {
                     <label
                       onMouseDown={saveSelection}
                       title="Custom Text Color"
-                      className="ml-0.5 inline-flex items-center p-1 rounded hover:bg-white cursor-pointer"
+                      className="ml-0.5 inline-flex items-center p-1 rounded-full notebook-tool-btn cursor-pointer"
                     >
                       <span
-                        className="w-3.5 h-3.5 rounded-full border border-black/20"
+                        className="w-3.5 h-3.5 rounded-full border border-white/30"
                         style={{
                           background:
                             'conic-gradient(from 0deg, #ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444)',
