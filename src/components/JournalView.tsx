@@ -40,6 +40,17 @@ function getDisplayTags(tags: string[]): string[] {
   return tags.filter((t) => !t.startsWith('book:') && !t.startsWith('color:'));
 }
 
+function getPageSnippet(html: string): string {
+  const plain = html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!plain) return '';
+  const words = plain.split(' ');
+  return words.length > 7 ? `${words.slice(0, 7).join(' ')}...` : `${plain}...`;
+}
+
 export const JournalView: React.FC = () => {
   const {
     journalEntries,
@@ -850,38 +861,44 @@ export const JournalView: React.FC = () => {
                   This book has no pages yet. Click &ldquo;New Page&rdquo; above.
                 </div>
               ) : (
-                bookPages.map((entry, idx) => {
+                bookPages.map((entry) => {
                   const selected = activeEntry?.id === entry.id;
                   const customTags = getDisplayTags(entry.tags);
+                  const snippet = getPageSnippet(entry.content);
                   return (
                     <button
                       key={entry.id}
                       type="button"
                       onClick={() => setSelectedId(entry.id)}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                        selected ? 'notebook-page-item-active shadow-2xs' : 'notebook-page-item'
-                      }`}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${selected ? 'notebook-page-item-active shadow-2xs' : 'notebook-page-item'
+                        }`}
                     >
-                      <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider">
-                        <span className="text-[#0A5386]">Page {idx + 1}</span>
-                        <span className="text-[#71717A]">{entry.author}</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs font-semibold text-[#18181B] truncate">
+                          {entry.title || 'Untitled Page'}
+                        </div>
+                        <span className="text-[10px] font-medium text-[#71717A] shrink-0">
+                          {entry.author}
+                        </span>
                       </div>
-                      <div className="mt-1 text-xs font-semibold text-[#18181B] truncate">
-                        {entry.title}
-                      </div>
+                      {snippet && (
+                        <div className="mt-1 text-[11px] text-[#71717A] truncate">
+                          {snippet}
+                        </div>
+                      )}
                       {customTags.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {customTags.map((tag) => (
                             <span
                               key={tag}
-                              className="px-1.5 py-0.5 text-[10px] font-medium bg-[#0A5386]/10 text-[#0A5386] rounded"
+                              className="px-1.5 py-0.5 text-[10px] font-medium bg-[#0A5386]/15 text-[#38BDF8] rounded"
                             >
                               #{tag}
                             </span>
                           ))}
                         </div>
                       )}
-                      <div className="mt-1 text-[11px] text-[#71717A] font-mono-num">
+                      <div className="mt-1 text-[10px] text-[#71717A] font-mono-num">
                         {formatDateShort(entry.updatedAt)}
                       </div>
                     </button>
@@ -1128,9 +1145,8 @@ export const JournalView: React.FC = () => {
                         }}
                         title={`Ink ${ink}`}
                         style={{ backgroundColor: ink }}
-                        className={`w-3.5 h-3.5 rounded-full border border-white/30 ${
-                          fontColor === ink ? 'ring-2 ring-offset-1 ring-[#0A5386]' : ''
-                        }`}
+                        className={`w-3.5 h-3.5 rounded-full border border-white/30 ${fontColor === ink ? 'ring-2 ring-offset-1 ring-[#0A5386]' : ''
+                          }`}
                       />
                     ))}
                     <label
