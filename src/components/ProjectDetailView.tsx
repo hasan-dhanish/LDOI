@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Moon, Sun, Trash2 } from 'lucide-react';
 import { useLdoi } from '../context/LdoiContext';
-import { AnimatedDeleteButton } from './AnimatedDeleteButton';
 import { ConfirmModal } from './ConfirmModal';
 import { ProjectPinboard } from './ProjectPinboard';
 
 interface ProjectDetailViewProps {
   projectId: string;
   onBack: () => void;
+  darkMode: boolean;
+  onToggleDarkMode: () => void;
 }
 
 export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   projectId,
   onBack,
+  darkMode,
+  onToggleDarkMode,
 }) => {
   const { projects, updateProject, deleteProject } = useLdoi();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -65,10 +68,14 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
       {/* Fixed Floating Top-Right Actions */}
       <div className="fixed top-4 right-4 z-40 flex items-center gap-2">
-        <AnimatedDeleteButton
-          onClick={() => setConfirmDeleteOpen(true)}
-          title="Delete Project"
-        />
+        <button
+          type="button"
+          onClick={onToggleDarkMode}
+          title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          className="ios-press p-2 rounded-full paper-card border border-[#E4E2DC] text-[#18181B] shadow-lg"
+        >
+          {darkMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+        </button>
         {project.status !== 'Completed' && (
           <button
             type="button"
@@ -79,6 +86,15 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             End Project
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => setConfirmDeleteOpen(true)}
+          title="Delete Project"
+          className="ios-press inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full paper-card border border-[#E4E2DC] hover:border-[#DC2626] text-xs font-semibold text-[#71717A] hover:text-[#DC2626] shadow-lg"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          Delete
+        </button>
       </div>
 
       {/* Full-Screen Pinboard Matrix Canvas */}

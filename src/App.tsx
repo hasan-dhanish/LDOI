@@ -83,6 +83,8 @@ const WorkspaceShell: React.FC = () => {
             <ProjectDetailView
               projectId={selectedProjectId}
               onBack={() => setSelectedProjectId(null)}
+              darkMode={darkMode}
+              onToggleDarkMode={toggleDarkMode}
             />
           ) : (
             <ProjectsView onOpenProject={handleOpenProject} />

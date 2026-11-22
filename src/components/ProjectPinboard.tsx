@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   ArrowLeftRight,
   ArrowUpRight,
   Bold,
   CheckSquare,
-  Crosshair,
   Download,
   Eraser,
   FileSpreadsheet,
@@ -20,7 +19,7 @@ import {
   Minus,
   Pen,
   Plus,
-  RotateCcw,
+  Redo2,
   Square,
   StickyNote,
   Trash2,
@@ -56,6 +55,21 @@ interface ProjectPinboardProps {
   project: Project;
 }
 
+interface BoardSnapshot {
+  positions: BoardPositions;
+  connectors: BoardConnector[];
+  zones: BoardZone[];
+  strokes: BoardStroke[];
+  hiddenIds: string[];
+}
+
+export interface FloatingPageHandle {
+  execFormat: (cmd: string, val?: string) => void;
+  openChecklist: () => void;
+  setPaperColor: (hex: string) => void;
+  getPaperColor: () => string;
+}
+
 const PAGE_PAPER_COLORS = [
   { label: 'Default', hex: '' },
   { label: 'Warm Cream', hex: '#FEF3C7' },
@@ -73,6 +87,83 @@ function getFileBadge(name: string): string {
   if (['xls', 'xlsx', 'csv'].includes(ext)) return 'SHEET';
   if (['doc', 'docx'].includes(ext)) return 'DOC';
   return ext.toUpperCase().slice(0, 5) || 'FILE';
+}
+
+function buildRoundedOrthogonalPath(
+  from: { x: number; y: number },
+  fromSide: AnchorSide,
+  to: { x: number; y: number },
+  toSide: AnchorSide,
+  radius = 12
+): string {
+  const stub = 28;
+  const dir = (side: AnchorSide) =>
+    side === 'left'
+      ? { x: -1, y: 0 }
+      : side === 'right'
+      ? { x: 1, y: 0 }
+      : side === 'top'
+      ? { x: 0, y: -1 }
+      : { x: 0, y: 1 };
+
+  const d1 = dir(fromSide);
+  const d2 = dir(toSide);
+  const p1 = { x: from.x + d1.x * stub, y: from.y + d1.y * stub };
+  const p2 = { x: to.x + d2.x * stub, y: to.y + d2.y * stub };
+
+  const rawPts: { x: number; y: number }[] = [from, p1];
+  const exitHoriz = fromSide === 'left' || fromSide === 'right';
+  const enterHoriz = toSide === 'left' || toSide === 'right';
+
+  if (exitHoriz && enterHoriz) {
+    const midX = (p1.x + p2.x) / 2;
+    rawPts.push({ x: midX, y: p1.y }, { x: midX, y: p2.y });
+  } else if (!exitHoriz && !enterHoriz) {
+    const midY = (p1.y + p2.y) / 2;
+    rawPts.push({ x: p1.x, y: midY }, { x: p2.x, y: midY });
+  } else if (exitHoriz && !enterHoriz) {
+    rawPts.push({ x: p2.x, y: p1.y });
+  } else {
+    rawPts.push({ x: p1.x, y: p2.y });
+  }
+  rawPts.push(p2, to);
+
+  // Deduplicate consecutive identical points
+  const pts: { x: number; y: number }[] = [];
+  for (const pt of rawPts) {
+    const prev = pts[pts.length - 1];
+    if (!prev || Math.hypot(pt.x - prev.x, pt.y - prev.y) > 0.5) {
+      pts.push(pt);
+    }
+  }
+
+  if (pts.length < 2) return `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
+
+  let path = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    const c = pts[i + 1];
+    const len1 = Math.hypot(b.x - a.x, b.y - a.y);
+    const len2 = Math.hypot(c.x - b.x, c.y - b.y);
+    const r = Math.min(radius, len1 / 2, len2 / 2);
+    if (r < 1) {
+      path += ` L ${b.x} ${b.y}`;
+      continue;
+    }
+    const u1x = (b.x - a.x) / len1;
+    const u1y = (b.y - a.y) / len1;
+    const u2x = (c.x - b.x) / len2;
+    const u2y = (c.y - b.y) / len2;
+    const startX = b.x - u1x * r;
+    const startY = b.y - u1y * r;
+    const endX = b.x + u2x * r;
+    const endY = b.y + u2y * r;
+    path += ` L ${startX} ${startY} Q ${b.x} ${b.y} ${endX} ${endY}`;
+  }
+  const last = pts[pts.length - 1];
+  path += ` L ${last.x} ${last.y}`;
+  return path;
 }
 
 const AnchorDots: React.FC<{
@@ -116,208 +207,148 @@ const AnchorDots: React.FC<{
   );
 };
 
-const FloatingPagePin: React.FC<{
-  note: ProjectNote;
-  pos: { x: number; y: number };
-  connectActive: boolean;
-  activeAnchorSide: AnchorSide | null;
-  onSelectAnchor: (side: AnchorSide) => void;
-  onMeasure: (el: HTMLDivElement | null) => void;
-  onDragStart: (e: React.PointerEvent) => void;
-  onUpdate: (content: string) => void;
-  onDelete: () => void;
-}> = ({
-  note,
-  pos,
-  connectActive,
-  activeAnchorSide,
-  onSelectAnchor,
-  onMeasure,
-  onDragStart,
-  onUpdate,
-  onDelete,
-}) => {
-  const initialData = parsePinPageContent(note.content);
-  const [title, setTitle] = useState(initialData.title);
-  const [checklist, setChecklist] = useState(initialData.checklist);
-  const [bgColor, setBgColor] = useState(initialData.bgColor ?? '');
-  const [showChecklistInput, setShowChecklistInput] = useState(initialData.checklist.length > 0);
-  const [newCheckItem, setNewCheckItem] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
+const FloatingPagePin = React.forwardRef<
+  FloatingPageHandle,
+  {
+    note: ProjectNote;
+    pos: { x: number; y: number };
+    connectActive: boolean;
+    isFocusedCard: boolean;
+    activeAnchorSide: AnchorSide | null;
+    onFocusCard: () => void;
+    onSelectAnchor: (side: AnchorSide) => void;
+    onMeasure: (el: HTMLDivElement | null) => void;
+    onDragStart: (e: React.PointerEvent) => void;
+    onUpdate: (content: string) => void;
+    onDelete: () => void;
+  }
+>(
+  (
+    {
+      note,
+      pos,
+      connectActive,
+      isFocusedCard,
+      activeAnchorSide,
+      onFocusCard,
+      onSelectAnchor,
+      onMeasure,
+      onDragStart,
+      onUpdate,
+      onDelete,
+    },
+    ref
+  ) => {
+    const initialData = parsePinPageContent(note.content);
+    const [title, setTitle] = useState(initialData.title);
+    const [checklist, setChecklist] = useState(initialData.checklist);
+    const [bgColor, setBgColor] = useState(initialData.bgColor ?? '');
+    const [showChecklistInput, setShowChecklistInput] = useState(
+      initialData.checklist.length > 0
+    );
+    const [newCheckItem, setNewCheckItem] = useState('');
 
-  const editorRef = useRef<HTMLDivElement | null>(null);
-  const savedRangeRef = useRef<Range | null>(null);
-  const saveTimerRef = useRef<number | null>(null);
+    const editorRef = useRef<HTMLDivElement | null>(null);
+    const savedRangeRef = useRef<Range | null>(null);
+    const saveTimerRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (editorRef.current && document.activeElement !== editorRef.current) {
-      editorRef.current.innerHTML = initialData.bodyHtml;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [note.id]);
-
-  const flushSave = (nextPatch?: Partial<PinPageData>) => {
-    const payload: PinPageData = {
-      title: nextPatch?.title ?? title,
-      bodyHtml: nextPatch?.bodyHtml ?? editorRef.current?.innerHTML ?? initialData.bodyHtml,
-      checklist: nextPatch?.checklist ?? checklist,
-      bgColor: nextPatch?.bgColor !== undefined ? nextPatch.bgColor : bgColor || undefined,
-    };
-    onUpdate(serializePinPageContent(payload));
-  };
-
-  const scheduleSave = (nextPatch?: Partial<PinPageData>) => {
-    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = window.setTimeout(() => {
-      flushSave(nextPatch);
-    }, 220);
-  };
-
-  const saveSelection = () => {
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
-      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
-    }
-  };
-
-  const execFormat = (command: string, value?: string) => {
-    editorRef.current?.focus();
-    if (savedRangeRef.current) {
-      const sel = window.getSelection();
-      if (sel) {
-        sel.removeAllRanges();
-        sel.addRange(savedRangeRef.current);
+    useEffect(() => {
+      if (editorRef.current && document.activeElement !== editorRef.current) {
+        editorRef.current.innerHTML = initialData.bodyHtml;
       }
-    }
-    try {
-      document.execCommand('styleWithCSS', false, 'true');
-    } catch {
-      // ignore
-    }
-    document.execCommand(command, false, value);
-    saveSelection();
-    if (editorRef.current) {
-      scheduleSave({ bodyHtml: editorRef.current.innerHTML });
-    }
-  };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [note.id]);
 
-  const hasCustomTint = Boolean(bgColor);
+    const flushSave = (nextPatch?: Partial<PinPageData>) => {
+      const payload: PinPageData = {
+        title: nextPatch?.title ?? title,
+        bodyHtml: nextPatch?.bodyHtml ?? editorRef.current?.innerHTML ?? initialData.bodyHtml,
+        checklist: nextPatch?.checklist ?? checklist,
+        bgColor: nextPatch?.bgColor !== undefined ? nextPatch.bgColor : bgColor || undefined,
+      };
+      onUpdate(serializePinPageContent(payload));
+    };
 
-  return (
-    <div
-      ref={onMeasure}
-      style={{
-        left: pos.x,
-        top: pos.y,
-        backgroundColor: hasCustomTint ? bgColor : undefined,
-      }}
-      onFocus={() => setIsFocused(true)}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-          setIsFocused(false);
+    const scheduleSave = (nextPatch?: Partial<PinPageData>) => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = window.setTimeout(() => {
+        flushSave(nextPatch);
+      }, 220);
+    };
+
+    const saveSelection = () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
+        savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+      }
+    };
+
+    const execFormat = (command: string, value?: string) => {
+      editorRef.current?.focus();
+      if (savedRangeRef.current) {
+        const sel = window.getSelection();
+        if (sel) {
+          sel.removeAllRanges();
+          sel.addRange(savedRangeRef.current);
         }
-      }}
-      className={`group absolute w-[300px] rounded-xl p-4 select-none transition-shadow hover:z-30 focus-within:z-30 ${
-        hasCustomTint
-          ? 'shadow-[0_14px_34px_rgba(24,24,27,0.14)] text-[#18181B]'
-          : 'floating-sheet'
-      } ${activeAnchorSide ? 'ring-2 ring-[#0A5386]/70 z-30' : ''}`}
-    >
-      {/* 4 Edge Snap Dots */}
-      <AnchorDots
-        visible={connectActive}
-        activeSide={activeAnchorSide}
-        onSelectSide={onSelectAnchor}
-      />
+      }
+      try {
+        document.execCommand('styleWithCSS', false, 'true');
+      } catch {
+        // ignore
+      }
+      document.execCommand(command, false, value);
+      saveSelection();
+      if (editorRef.current) {
+        scheduleSave({ bodyHtml: editorRef.current.innerHTML });
+      }
+    };
 
-      {/* Hover / Focus Rich-Text & Color Mini-Toolbar */}
-      {!connectActive && (
-        <div
-          onPointerDown={(e) => e.stopPropagation()}
-          className={`transition-opacity absolute -top-9 left-0 right-0 z-40 flex items-center justify-between gap-1 ${
-            isFocused
-              ? 'opacity-100 pointer-events-auto'
-              : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'
-          }`}
-        >
-          <div className="paper-card rounded-full px-2 py-1 shadow-lg border border-[#E4E2DC] flex items-center gap-0.5 backdrop-blur-md">
-            <button
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                execFormat('bold');
-              }}
-              title="Bold"
-              className="p-1 rounded-full hover:bg-black/5 text-[#18181B]"
-            >
-              <Bold className="w-3 h-3" />
-            </button>
-            <button
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                execFormat('italic');
-              }}
-              title="Italic"
-              className="p-1 rounded-full hover:bg-black/5 text-[#18181B]"
-            >
-              <Italic className="w-3 h-3" />
-            </button>
-            <button
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                execFormat('underline');
-              }}
-              title="Underline"
-              className="p-1 rounded-full hover:bg-black/5 text-[#18181B]"
-            >
-              <Underline className="w-3 h-3" />
-            </button>
-            <button
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                execFormat('insertUnorderedList');
-              }}
-              title="Bullet List"
-              className="p-1 rounded-full hover:bg-black/5 text-[#18181B]"
-            >
-              <List className="w-3 h-3" />
-            </button>
-            <button
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                setShowChecklistInput(true);
-              }}
-              title="Add Checklist Inside Page"
-              className="p-1 rounded-full hover:bg-black/5 text-[#0A5386]"
-            >
-              <ListChecks className="w-3 h-3" />
-            </button>
+    useImperativeHandle(ref, () => ({
+      execFormat,
+      openChecklist: () => setShowChecklistInput(true),
+      setPaperColor: (hex: string) => {
+        setBgColor(hex);
+        flushSave({ bgColor: hex || undefined });
+      },
+      getPaperColor: () => bgColor,
+    }));
 
-            <div className="w-px h-3.5 bg-[#D6D0C2] mx-0.5" />
+    const hasCustomTint = Boolean(bgColor);
 
-            {PAGE_PAPER_COLORS.map((c) => (
-              <button
-                key={c.label}
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setBgColor(c.hex);
-                  flushSave({ bgColor: c.hex || undefined });
-                }}
-                title={c.label}
-                style={{ backgroundColor: c.hex || '#FCFBF8' }}
-                className={`w-3 h-3 rounded-full border border-black/20 ${
-                  bgColor === c.hex ? 'ring-1 ring-offset-1 ring-[#0A5386]' : ''
-                }`}
-              />
-            ))}
-          </div>
+    return (
+      <div
+        ref={onMeasure}
+        style={{
+          left: pos.x,
+          top: pos.y,
+          backgroundColor: hasCustomTint ? bgColor : undefined,
+        }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          onFocusCard();
+        }}
+        onFocus={onFocusCard}
+        className={`group absolute w-[300px] rounded-xl p-4 select-none transition-shadow ${
+          hasCustomTint
+            ? 'shadow-[0_14px_34px_rgba(24,24,27,0.14)] text-[#18181B]'
+            : 'floating-sheet'
+        } ${
+          activeAnchorSide || isFocusedCard
+            ? 'ring-2 ring-[#0A5386]/70 z-20'
+            : 'hover:z-20'
+        }`}
+      >
+        {/* 4 Edge Snap Dots */}
+        <AnchorDots
+          visible={connectActive}
+          activeSide={activeAnchorSide}
+          onSelectSide={onSelectAnchor}
+        />
 
-          <div className="flex items-center gap-1">
+        {/* Compact Top-Right Corner Drag & Delete */}
+        {!connectActive && (
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2.5 right-0 z-30 flex items-center gap-1">
             <div
               onPointerDown={onDragStart}
               title="Drag page"
@@ -335,122 +366,119 @@ const FloatingPagePin: React.FC<{
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Editable Page Title */}
-      <input
-        type="text"
-        value={title}
-        disabled={connectActive}
-        onPointerDown={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          setTitle(e.target.value);
-          scheduleSave({ title: e.target.value });
-        }}
-        placeholder="Page title..."
-        className={`w-full text-sm font-bold bg-transparent focus:outline-none placeholder:text-[#A1A1AA] ${
-          hasCustomTint ? '!text-[#18181B]' : 'text-[#18181B]'
-        }`}
-        style={hasCustomTint ? { backgroundColor: 'transparent', color: '#18181B' } : undefined}
-      />
+        {/* Editable Page Title */}
+        <input
+          type="text"
+          value={title}
+          disabled={connectActive}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            scheduleSave({ title: e.target.value });
+          }}
+          placeholder="Page title..."
+          className={`w-full text-sm font-bold bg-transparent focus:outline-none placeholder:text-[#A1A1AA] ${
+            hasCustomTint ? '!text-[#18181B]' : 'text-[#18181B]'
+          }`}
+          style={hasCustomTint ? { backgroundColor: 'transparent', color: '#18181B' } : undefined}
+        />
 
-      {/* Rich-Text Body */}
-      <div
-        ref={editorRef}
-        contentEditable={!connectActive}
-        suppressContentEditableWarning
-        onPointerDown={(e) => {
-          if (!connectActive) e.stopPropagation();
-        }}
-        onMouseUp={saveSelection}
-        onKeyUp={saveSelection}
-        onInput={(e) => {
-          saveSelection();
-          scheduleSave({ bodyHtml: e.currentTarget.innerHTML });
-        }}
-        data-placeholder="Write notes..."
-        className={`notebook-editor mt-1.5 w-full min-h-[76px] text-xs leading-relaxed bg-transparent focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-[#A1A1AA] select-text ${
-          hasCustomTint ? 'text-[#27272A]' : 'text-[#3F3F46]'
-        }`}
-      />
-
-      {/* Built-In Checklist Inside the Page */}
-      {(showChecklistInput || checklist.length > 0) && (
+        {/* Rich-Text Body */}
         <div
-          onPointerDown={(e) => e.stopPropagation()}
-          className="mt-2.5 pt-2 border-t border-black/10 space-y-1"
-        >
-          {checklist.map((cp) => (
-            <div key={cp.id} className="flex items-start justify-between gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  const next = checklist.map((c) =>
-                    c.id === cp.id ? { ...c, done: !c.done } : c
-                  );
-                  setChecklist(next);
-                  flushSave({ checklist: next });
-                }}
-                className="flex items-start gap-1.5 text-left flex-1 min-w-0"
-              >
-                {cp.done ? (
-                  <CheckSquare className="w-3.5 h-3.5 text-[#0A5386] shrink-0 mt-0.5" />
-                ) : (
-                  <Square className="w-3.5 h-3.5 text-[#71717A] shrink-0 mt-0.5" />
-                )}
-                <span
-                  className={`text-xs leading-snug ${
-                    cp.done ? 'line-through text-[#71717A]' : 'text-[#18181B]'
-                  }`}
-                >
-                  {cp.text}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const next = checklist.filter((c) => c.id !== cp.id);
-                  setChecklist(next);
-                  flushSave({ checklist: next });
-                }}
-                className="opacity-0 group-hover:opacity-100 text-[#A1A1AA] hover:text-[#DC2626] shrink-0"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            </div>
-          ))}
+          ref={editorRef}
+          contentEditable={!connectActive}
+          suppressContentEditableWarning
+          onMouseUp={saveSelection}
+          onKeyUp={saveSelection}
+          onInput={(e) => {
+            saveSelection();
+            scheduleSave({ bodyHtml: e.currentTarget.innerHTML });
+          }}
+          data-placeholder="Write notes..."
+          className={`notebook-editor mt-1.5 w-full min-h-[76px] text-xs leading-relaxed bg-transparent focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-[#A1A1AA] select-text ${
+            hasCustomTint ? 'text-[#27272A]' : 'text-[#3F3F46]'
+          }`}
+        />
 
-          {!connectActive && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!newCheckItem.trim()) return;
-                const next = [
-                  ...checklist,
-                  { id: `cp_${Date.now()}`, text: newCheckItem.trim(), done: false },
-                ];
-                setChecklist(next);
-                setNewCheckItem('');
-                flushSave({ checklist: next });
-              }}
-              className="pt-0.5"
-            >
-              <input
-                type="text"
-                value={newCheckItem}
-                onChange={(e) => setNewCheckItem(e.target.value)}
-                placeholder="+ Add checklist item..."
-                className="w-full text-[11px] bg-transparent focus:outline-none placeholder:text-[#A1A1AA]"
-                style={hasCustomTint ? { backgroundColor: 'transparent', color: '#18181B' } : undefined}
-              />
-            </form>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
+        {/* Built-In Checklist Inside the Page */}
+        {(showChecklistInput || checklist.length > 0) && (
+          <div className="mt-2.5 pt-2 border-t border-black/10 space-y-1">
+            {checklist.map((cp) => (
+              <div key={cp.id} className="flex items-start justify-between gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = checklist.map((c) =>
+                      c.id === cp.id ? { ...c, done: !c.done } : c
+                    );
+                    setChecklist(next);
+                    flushSave({ checklist: next });
+                  }}
+                  className="flex items-start gap-1.5 text-left flex-1 min-w-0"
+                >
+                  {cp.done ? (
+                    <CheckSquare className="w-3.5 h-3.5 text-[#0A5386] shrink-0 mt-0.5" />
+                  ) : (
+                    <Square className="w-3.5 h-3.5 text-[#71717A] shrink-0 mt-0.5" />
+                  )}
+                  <span
+                    className={`text-xs leading-snug ${
+                      cp.done ? 'line-through text-[#71717A]' : 'text-[#18181B]'
+                    }`}
+                  >
+                    {cp.text}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = checklist.filter((c) => c.id !== cp.id);
+                    setChecklist(next);
+                    flushSave({ checklist: next });
+                  }}
+                  className="opacity-0 group-hover:opacity-100 text-[#A1A1AA] hover:text-[#DC2626] shrink-0"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+
+            {!connectActive && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!newCheckItem.trim()) return;
+                  const next = [
+                    ...checklist,
+                    { id: `cp_${Date.now()}`, text: newCheckItem.trim(), done: false },
+                  ];
+                  setChecklist(next);
+                  setNewCheckItem('');
+                  flushSave({ checklist: next });
+                }}
+                className="pt-0.5"
+              >
+                <input
+                  type="text"
+                  value={newCheckItem}
+                  onChange={(e) => setNewCheckItem(e.target.value)}
+                  placeholder="+ Add checklist item..."
+                  className="w-full text-[11px] bg-transparent focus:outline-none placeholder:text-[#A1A1AA]"
+                  style={
+                    hasCustomTint
+                      ? { backgroundColor: 'transparent', color: '#18181B' }
+                      : undefined
+                  }
+                />
+              </form>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+);
 
 export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => {
   const {
@@ -476,6 +504,16 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   );
   const [zones, setZones] = useState<BoardZone[]>(() => loadBoardZones(project.id));
   const [strokes, setStrokes] = useState<BoardStroke[]>(() => loadBoardStrokes(project.id));
+  const [hiddenPinIds, setHiddenPinIds] = useState<string[]>([]);
+
+  // Unified Undo / Redo Stacks for ALL workspace actions
+  const undoStackRef = useRef<BoardSnapshot[]>([]);
+  const redoStackRef = useRef<BoardSnapshot[]>([]);
+  const [historyCounts, setHistoryCounts] = useState({ undo: 0, redo: 0 });
+  const pendingDeleteTimersRef = useRef<Record<string, { kind: 'doc' | 'note'; timer: number }>>(
+    {}
+  );
+
   const [activeStroke, setActiveStroke] = useState<BoardStroke | null>(null);
   const [drawMode, setDrawMode] = useState(false);
   const [penColor, setPenColor] = useState('#0A5386');
@@ -489,15 +527,15 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     null
   );
   const [selectedConnId, setSelectedConnId] = useState<string | null>(null);
+  const [focusedPageId, setFocusedPageId] = useState<string | null>(null);
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [mouseWorld, setMouseWorld] = useState<{ x: number; y: number } | null>(null);
 
-  // Measure actual rendered dimensions of each pin so edge dots & arrows snap cleanly to surfaces
+  const pageHandlesRef = useRef<Record<string, FloatingPageHandle | null>>({});
   const [cardSizes, setCardSizes] = useState<Record<string, { w: number; h: number }>>({});
-  const cardNodesRef = useRef<Record<string, HTMLDivElement | null>>({});
 
   const registerCardRef = useCallback(
     (cardId: string) => (el: HTMLDivElement | null) => {
-      cardNodesRef.current[cardId] = el;
       if (el) {
         const w = el.offsetWidth;
         const h = el.offsetHeight;
@@ -515,10 +553,6 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const panRef = useRef({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
-  const [pendingDeletes, setPendingDeletes] = useState<
-    { id: string; kind: 'doc' | 'note'; label: string; timer: number }[]
-  >([]);
-  const pendingDeletesRef = useRef(pendingDeletes);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
     cardId: string;
@@ -529,10 +563,6 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   } | null>(null);
 
   useEffect(() => {
-    pendingDeletesRef.current = pendingDeletes;
-  }, [pendingDeletes]);
-
-  useEffect(() => {
     zoomRef.current = zoom;
   }, [zoom]);
 
@@ -540,7 +570,76 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     panRef.current = pan;
   }, [pan]);
 
-  // Follow selected teammate's live pointer when active
+  const snapshotNow = useCallback(
+    (): BoardSnapshot => ({
+      positions: { ...positions },
+      connectors: connectors.map((c) => ({ ...c })),
+      zones: zones.map((z) => ({ ...z })),
+      strokes: strokes.map((s) => ({ ...s, points: [...s.points] })),
+      hiddenIds: [...hiddenPinIds],
+    }),
+    [positions, connectors, zones, strokes, hiddenPinIds]
+  );
+
+  const pushHistory = useCallback(
+    (snap?: BoardSnapshot) => {
+      undoStackRef.current.push(snap ?? snapshotNow());
+      if (undoStackRef.current.length > 60) undoStackRef.current.shift();
+      redoStackRef.current = [];
+      setHistoryCounts({
+        undo: undoStackRef.current.length,
+        redo: 0,
+      });
+    },
+    [snapshotNow]
+  );
+
+  const applySnapshot = useCallback(
+    (snap: BoardSnapshot) => {
+      setPositions(snap.positions);
+      saveBoardPositions(project.id, snap.positions);
+      setConnectors(snap.connectors);
+      saveBoardConnectors(project.id, snap.connectors);
+      setZones(snap.zones);
+      saveBoardZones(project.id, snap.zones);
+      setStrokes(snap.strokes);
+      saveBoardStrokes(project.id, snap.strokes);
+
+      // Cancel pending permanent delete timers if restoring a deleted pin
+      for (const id of Object.keys(pendingDeleteTimersRef.current)) {
+        if (!snap.hiddenIds.includes(id)) {
+          window.clearTimeout(pendingDeleteTimersRef.current[id].timer);
+          delete pendingDeleteTimersRef.current[id];
+        }
+      }
+      setHiddenPinIds(snap.hiddenIds);
+    },
+    [project.id]
+  );
+
+  const handleWorkspaceUndo = useCallback(() => {
+    if (undoStackRef.current.length === 0) return;
+    const prev = undoStackRef.current.pop()!;
+    redoStackRef.current.push(snapshotNow());
+    applySnapshot(prev);
+    setHistoryCounts({
+      undo: undoStackRef.current.length,
+      redo: redoStackRef.current.length,
+    });
+  }, [snapshotNow, applySnapshot]);
+
+  const handleWorkspaceRedo = useCallback(() => {
+    if (redoStackRef.current.length === 0) return;
+    const next = redoStackRef.current.pop()!;
+    undoStackRef.current.push(snapshotNow());
+    applySnapshot(next);
+    setHistoryCounts({
+      undo: undoStackRef.current.length,
+      redo: redoStackRef.current.length,
+    });
+  }, [snapshotNow, applySnapshot]);
+
+  // Follow selected teammate's live pointer
   const followedCursor = followingMember
     ? liveCursorsMap[`${project.id}:${followingMember}`]
     : undefined;
@@ -555,27 +654,16 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     });
   }, [followingMember, followedCursor?.x, followedCursor?.y, followedCursor]);
 
-  const queueDelete = (kind: 'doc' | 'note', id: string, label: string) => {
+  const queueDelete = (kind: 'doc' | 'note', id: string) => {
+    pushHistory();
     const timer = window.setTimeout(() => {
-      if (kind === 'doc') {
-        deleteDocument(id);
-      } else {
-        deleteProjectNote(id);
-      }
-      setPendingDeletes((prev) => prev.filter((item) => item.id !== id));
-    }, 7000);
-
-    setPendingDeletes((prev) => [...prev, { id, kind, label, timer }]);
-  };
-
-  const handleUndoDelete = (targetId?: string) => {
-    setPendingDeletes((prev) => {
-      if (prev.length === 0) return prev;
-      const item = targetId ? prev.find((p) => p.id === targetId) : prev[prev.length - 1];
-      if (!item) return prev;
-      window.clearTimeout(item.timer);
-      return prev.filter((p) => p.id !== item.id);
-    });
+      if (kind === 'doc') deleteDocument(id);
+      else deleteProjectNote(id);
+      delete pendingDeleteTimersRef.current[id];
+    }, 10000);
+    pendingDeleteTimersRef.current[id] = { kind, timer };
+    setHiddenPinIds((prev) => [...prev, id]);
+    if (focusedPageId === id) setFocusedPageId(null);
   };
 
   useEffect(() => {
@@ -585,50 +673,55 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         setDrawMode(false);
         setConnectFrom(null);
         setSelectedConnId(null);
+        setSelectedZoneId(null);
+        setFocusedPageId(null);
         setFollowingMember(null);
-      }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedConnId) {
-        const tag = (e.target as HTMLElement | null)?.tagName;
-        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && !(e.target as HTMLElement)?.isContentEditable) {
-          setConnectors((prev) => {
-            const next = prev.filter((c) => c.id !== selectedConnId);
-            saveBoardConnectors(project.id, next);
-            return next;
-          });
-          setSelectedConnId(null);
-        }
-      }
-      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z') return;
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) {
         return;
       }
-      if (pendingDeletesRef.current.length > 0) {
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable;
+      if (isTyping) return;
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedConnId) {
+        pushHistory();
+        setConnectors((prev) => {
+          const next = prev.filter((c) => c.id !== selectedConnId);
+          saveBoardConnectors(project.id, next);
+          return next;
+        });
+        setSelectedConnId(null);
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
-        handleUndoDelete();
+        if (e.shiftKey) handleWorkspaceRedo();
+        else handleWorkspaceUndo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        handleWorkspaceRedo();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
-      pendingDeletesRef.current.forEach((item) => {
-        window.clearTimeout(item.timer);
-        if (item.kind === 'doc') {
-          deleteDocument(item.id);
-        } else {
-          deleteProjectNote(item.id);
-        }
+      Object.entries(pendingDeleteTimersRef.current).forEach(([id, info]) => {
+        window.clearTimeout(info.timer);
+        if (info.kind === 'doc') deleteDocument(id);
+        else deleteProjectNote(id);
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedConnId, project.id]);
+  }, [selectedConnId, project.id, handleWorkspaceUndo, handleWorkspaceRedo]);
 
-  const hiddenIds = new Set(pendingDeletes.map((p) => p.id));
+  const hiddenSet = new Set(hiddenPinIds);
   const projectDocs = documents.filter(
-    (d) => d.projectId === project.id && !hiddenIds.has(d.id)
+    (d) => d.projectId === project.id && !hiddenSet.has(d.id)
   );
   const pinnedPages = projectNotes.filter(
-    (n) => n.projectId === project.id && n.content.startsWith('[PIN_PAGE]') && !hiddenIds.has(n.id)
+    (n) => n.projectId === project.id && n.content.startsWith('[PIN_PAGE]') && !hiddenSet.has(n.id)
   );
 
   const getPos = (cardId: string, fallbackIndex = 0): { x: number; y: number } => {
@@ -674,19 +767,6 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     }
   };
 
-  const getDirectionalOffset = (side: AnchorSide, dist: number): { dx: number; dy: number } => {
-    switch (side) {
-      case 'top':
-        return { dx: 0, dy: -dist };
-      case 'right':
-        return { dx: dist, dy: 0 };
-      case 'bottom':
-        return { dx: 0, dy: dist };
-      case 'left':
-        return { dx: -dist, dy: 0 };
-    }
-  };
-
   const handleSelectAnchor = (cardId: string, side: AnchorSide) => {
     if (!connectMode) return;
     if (!connectFrom) {
@@ -697,6 +777,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
       setConnectFrom(null);
       return;
     }
+    pushHistory();
     const nextConn: BoardConnector = {
       id: `conn_${Date.now()}`,
       fromId: connectFrom.cardId,
@@ -714,6 +795,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   };
 
   const updateConnector = (connId: string, patch: Partial<BoardConnector>) => {
+    pushHistory();
     setConnectors((prev) => {
       const next = prev.map((c) => (c.id === connId ? { ...c, ...patch } : c));
       saveBoardConnectors(project.id, next);
@@ -722,6 +804,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   };
 
   const handleDeleteConnector = (connId: string) => {
+    pushHistory();
     const next = connectors.filter((c) => c.id !== connId);
     setConnectors(next);
     saveBoardConnectors(project.id, next);
@@ -729,10 +812,12 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   };
 
   const startDrag = (cardId: string, e: React.PointerEvent, fallbackIdx = 0) => {
-    if (connectMode) return;
+    if (connectMode || drawMode) return;
     e.preventDefault();
     e.stopPropagation();
+    const startSnap = snapshotNow();
     const pos = getPos(cardId, fallbackIdx);
+    let moved = false;
     dragRef.current = {
       cardId,
       startX: e.clientX,
@@ -743,6 +828,10 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
     const onMove = (ev: PointerEvent) => {
       if (!dragRef.current) return;
+      if (!moved) {
+        moved = true;
+        pushHistory(startSnap);
+      }
       const dx = (ev.clientX - dragRef.current.startX) / zoomRef.current;
       const dy = (ev.clientY - dragRef.current.startY) / zoomRef.current;
       const nx = Math.round(dragRef.current.origX + dx);
@@ -781,11 +870,59 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     );
   };
 
-  const handleResetLayout = () => {
-    setPositions({});
-    saveBoardPositions(project.id, {});
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+  const handleFitAll = () => {
+    setFollowingMember(null);
+    const rects: { x1: number; y1: number; x2: number; y2: number }[] = [];
+
+    zones.forEach((z) => rects.push({ x1: z.x, y1: z.y, x2: z.x + z.w, y2: z.y + z.h }));
+    pinnedPages.forEach((n, idx) => {
+      const r = getCardRect(`page_${n.id}`) ?? {
+        ...getPos(`page_${n.id}`, projectDocs.length + idx),
+        w: 300,
+        h: 165,
+      };
+      rects.push({ x1: r.x, y1: r.y, x2: r.x + r.w, y2: r.y + r.h });
+    });
+    projectDocs.forEach((d, idx) => {
+      const r = getCardRect(`doc_${d.id}`) ?? {
+        ...getPos(`doc_${d.id}`, idx),
+        w: 240,
+        h: 190,
+      };
+      rects.push({ x1: r.x, y1: r.y, x2: r.x + r.w, y2: r.y + r.h });
+    });
+    strokes.forEach((s) => {
+      s.points.forEach(([x, y]) => rects.push({ x1: x, y1: y, x2: x, y2: y }));
+    });
+
+    if (rects.length === 0) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      return;
+    }
+
+    const minX = Math.min(...rects.map((r) => r.x1));
+    const minY = Math.min(...rects.map((r) => r.y1));
+    const maxX = Math.max(...rects.map((r) => r.x2));
+    const maxY = Math.max(...rects.map((r) => r.y2));
+
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const vw = rect ? rect.width : window.innerWidth;
+    const vh = rect ? rect.height : window.innerHeight;
+    const pad = 110;
+    const bw = Math.max(100, maxX - minX);
+    const bh = Math.max(100, maxY - minY);
+    const nextZoom = Math.min(
+      1.1,
+      Math.max(0.08, Number(Math.min((vw - pad * 2) / bw, (vh - pad * 2) / bh).toFixed(3)))
+    );
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    setZoom(nextZoom);
+    setPan({
+      x: Math.round(vw / 2 - centerX * nextZoom),
+      y: Math.round(vh / 2 - centerY * nextZoom),
+    });
   };
 
   const clampZoom = (z: number) => Math.min(2.5, Math.max(0.05, Number(z.toFixed(3))));
@@ -868,6 +1005,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
       e.preventDefault();
       const rect = viewportRef.current?.getBoundingClientRect();
       if (!rect) return;
+      const startSnap = snapshotNow();
       const startWx = Math.round((e.clientX - rect.left - panRef.current.x) / zoomRef.current);
       const startWy = Math.round((e.clientY - rect.top - panRef.current.y) / zoomRef.current);
       let current: BoardStroke = {
@@ -887,6 +1025,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
       const onUp = () => {
         if (current.points.length > 1) {
+          pushHistory(startSnap);
           setStrokes((prev) => {
             const next = [...prev, current];
             saveBoardStrokes(project.id, next);
@@ -910,6 +1049,8 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
       }
       setShowElementsMenu(false);
       setSelectedConnId(null);
+      setSelectedZoneId(null);
+      setFocusedPageId(null);
       if (connectMode) setConnectFrom(null);
     }
     setFollowingMember(null);
@@ -936,12 +1077,6 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     window.addEventListener('pointerup', onUp);
   };
 
-  const handleBackToCenter = () => {
-    setFollowingMember(null);
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  };
-
   const jumpToWorldPoint = (wx: number, wy: number) => {
     setFollowingMember(null);
     const rect = viewportRef.current?.getBoundingClientRect();
@@ -955,6 +1090,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   };
 
   const handleAddZone = () => {
+    pushHistory();
     const rect = viewportRef.current?.getBoundingClientRect();
     const vw = rect ? rect.width : window.innerWidth;
     const vh = rect ? rect.height : window.innerHeight;
@@ -972,9 +1108,13 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     const next = [...zones, newZone];
     setZones(next);
     saveBoardZones(project.id, next);
+    setSelectedZoneId(newZone.id);
+    setFocusedPageId(null);
+    setSelectedConnId(null);
   };
 
-  const updateZone = (zoneId: string, patch: Partial<BoardZone>) => {
+  const updateZone = (zoneId: string, patch: Partial<BoardZone>, recordHistory = false) => {
+    if (recordHistory) pushHistory();
     setZones((prev) => {
       const next = prev.map((z) => (z.id === zoneId ? { ...z, ...patch } : z));
       saveBoardZones(project.id, next);
@@ -983,22 +1123,30 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   };
 
   const deleteZone = (zoneId: string) => {
+    pushHistory();
     setZones((prev) => {
       const next = prev.filter((z) => z.id !== zoneId);
       saveBoardZones(project.id, next);
       return next;
     });
+    if (selectedZoneId === zoneId) setSelectedZoneId(null);
   };
 
   const startZoneDrag = (zone: BoardZone, e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    const startSnap = snapshotNow();
+    let moved = false;
     const startX = e.clientX;
     const startY = e.clientY;
     const origX = zone.x;
     const origY = zone.y;
 
     const onMove = (ev: PointerEvent) => {
+      if (!moved) {
+        moved = true;
+        pushHistory(startSnap);
+      }
       const dx = (ev.clientX - startX) / zoomRef.current;
       const dy = (ev.clientY - startY) / zoomRef.current;
       updateZone(zone.id, { x: Math.round(origX + dx), y: Math.round(origY + dy) });
@@ -1016,12 +1164,18 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   const startZoneResize = (zone: BoardZone, e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    const startSnap = snapshotNow();
+    let resized = false;
     const startX = e.clientX;
     const startY = e.clientY;
     const origW = zone.w;
     const origH = zone.h;
 
     const onMove = (ev: PointerEvent) => {
+      if (!resized) {
+        resized = true;
+        pushHistory(startSnap);
+      }
       const dx = (ev.clientX - startX) / zoomRef.current;
       const dy = (ev.clientY - startY) / zoomRef.current;
       updateZone(zone.id, {
@@ -1068,6 +1222,8 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
   );
 
   const selectedConn = connectors.find((c) => c.id === selectedConnId) ?? null;
+  const focusedPage = pinnedPages.find((n) => n.id === focusedPageId) ?? null;
+  const selectedZone = zones.find((z) => z.id === selectedZoneId) ?? null;
   const totalPins = projectDocs.length + pinnedPages.length;
 
   const getStrokeDash = (style: ConnectorStyle) => {
@@ -1238,8 +1394,8 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         )}
       </div>
 
-      {/* Edit Existing Connector Pill */}
-      {selectedConn && !connectMode && (
+      {/* Contextual Floating Edit Tab: Line / Page / Zone / Connect / Pen */}
+      {selectedConn && !connectMode && !drawMode && (
         <div className="fixed bottom-18 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-2.5 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-1.5 backdrop-blur-md">
           {(['arrow', 'line', 'dashed', 'dotted'] as ConnectorStyle[]).map((st) => (
             <button
@@ -1289,6 +1445,135 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
             onClick={() => handleDeleteConnector(selectedConn.id)}
             title="Delete Line"
             className="p-1.5 rounded-full text-[#DC2626] hover:bg-[#DC2626]/10"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {focusedPage && !connectMode && !drawMode && !selectedConn && (
+        <div
+          onPointerDown={(e) => e.stopPropagation()}
+          className="fixed bottom-18 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-2.5 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-1 backdrop-blur-md"
+        >
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              pageHandlesRef.current[focusedPage.id]?.execFormat('bold');
+            }}
+            title="Bold"
+            className="p-1.5 rounded-full hover:bg-black/5 text-[#18181B]"
+          >
+            <Bold className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              pageHandlesRef.current[focusedPage.id]?.execFormat('italic');
+            }}
+            title="Italic"
+            className="p-1.5 rounded-full hover:bg-black/5 text-[#18181B]"
+          >
+            <Italic className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              pageHandlesRef.current[focusedPage.id]?.execFormat('underline');
+            }}
+            title="Underline"
+            className="p-1.5 rounded-full hover:bg-black/5 text-[#18181B]"
+          >
+            <Underline className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              pageHandlesRef.current[focusedPage.id]?.execFormat('insertUnorderedList');
+            }}
+            title="Bullet List"
+            className="p-1.5 rounded-full hover:bg-black/5 text-[#18181B]"
+          >
+            <List className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              pageHandlesRef.current[focusedPage.id]?.openChecklist();
+            }}
+            title="Add Checklist Inside Page"
+            className="p-1.5 rounded-full hover:bg-black/5 text-[#0A5386]"
+          >
+            <ListChecks className="w-3.5 h-3.5" />
+          </button>
+          <div className="w-px h-4 bg-[#E4E2DC] mx-0.5" />
+          {PAGE_PAPER_COLORS.map((c) => {
+            const activeColor = parsePinPageContent(focusedPage.content).bgColor ?? '';
+            return (
+              <button
+                key={c.label}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  pushHistory();
+                  pageHandlesRef.current[focusedPage.id]?.setPaperColor(c.hex);
+                }}
+                title={c.label}
+                style={{ backgroundColor: c.hex || '#FCFBF8' }}
+                className={`w-3.5 h-3.5 rounded-full border border-black/20 ${
+                  activeColor === c.hex ? 'ring-2 ring-offset-1 ring-[#0A5386]' : ''
+                }`}
+              />
+            );
+          })}
+          <div className="w-px h-4 bg-[#E4E2DC] mx-0.5" />
+          <button
+            type="button"
+            onClick={() => queueDelete('note', focusedPage.id)}
+            title="Delete Page"
+            className="p-1.5 rounded-full text-[#DC2626] hover:bg-[#DC2626]/10"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {selectedZone && !connectMode && !drawMode && !selectedConn && !focusedPage && (
+        <div
+          onPointerDown={(e) => e.stopPropagation()}
+          className="fixed bottom-18 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-3 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-2 backdrop-blur-md"
+        >
+          <Frame className="w-3.5 h-3.5 shrink-0" style={{ color: selectedZone.color }} />
+          <input
+            type="text"
+            value={selectedZone.title}
+            onChange={(e) => updateZone(selectedZone.id, { title: e.target.value })}
+            placeholder="Zone name..."
+            className="w-32 text-xs font-semibold bg-transparent focus:outline-none text-[#18181B]"
+          />
+          <div className="w-px h-4 bg-[#E4E2DC]" />
+          {CONNECTOR_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => updateZone(selectedZone.id, { color: c }, true)}
+              style={{ backgroundColor: c }}
+              className={`w-3.5 h-3.5 rounded-full border border-white/40 ${
+                selectedZone.color === c ? 'ring-2 ring-offset-1 ring-[#0A5386]' : ''
+              }`}
+            />
+          ))}
+          <div className="w-px h-4 bg-[#E4E2DC]" />
+          <button
+            type="button"
+            onClick={() => deleteZone(selectedZone.id)}
+            title="Delete Zone"
+            className="p-1 rounded-full text-[#DC2626] hover:bg-[#DC2626]/10"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -1361,20 +1646,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           <button
             type="button"
             onClick={() => {
-              setStrokes((prev) => {
-                const next = prev.slice(0, -1);
-                saveBoardStrokes(project.id, next);
-                return next;
-              });
-            }}
-            title="Undo Last Stroke"
-            className="p-1.5 rounded-full text-[#52525B] hover:text-[#18181B] hover:bg-black/5"
-          >
-            <Undo2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
+              pushHistory();
               setStrokes([]);
               saveBoardStrokes(project.id, []);
             }}
@@ -1465,16 +1737,25 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
         <button
           type="button"
-          onClick={handleResetLayout}
-          title="Reset Layout"
-          className="ios-press shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-[#52525B] hover:text-[#18181B] rounded-full"
+          disabled={historyCounts.undo === 0}
+          onClick={handleWorkspaceUndo}
+          title="Undo (Ctrl+Z)"
+          className="ios-press shrink-0 p-2 rounded-full text-[#18181B] disabled:opacity-35 hover:bg-black/5"
         >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Reset</span>
+          <Undo2 className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          disabled={historyCounts.redo === 0}
+          onClick={handleWorkspaceRedo}
+          title="Redo (Ctrl+Y)"
+          className="ios-press shrink-0 p-2 rounded-full text-[#18181B] disabled:opacity-35 hover:bg-black/5"
+        >
+          <Redo2 className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Fixed Floating Zoom + Back to Center Pill (Bottom-Right) */}
+      {/* Fixed Floating Zoom + Fit All Pill (Bottom-Right) */}
       <div className="fixed bottom-16 right-4 sm:bottom-5 sm:right-5 z-40 paper-card rounded-full px-2.5 py-1.5 shadow-2xl border border-[#E4E2DC] flex items-center gap-1.5 backdrop-blur-md">
         <button
           type="button"
@@ -1504,55 +1785,27 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         >
           <Plus className="w-3.5 h-3.5" />
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            setZoom(0.28);
-            setPan({ x: 80, y: 80 });
-          }}
-          title="Bird's-Eye Overview"
-          className="ios-press p-1 rounded-full text-[#0A5386] hover:bg-[#0A5386]/10"
-        >
-          <Maximize2 className="w-3.5 h-3.5" />
-        </button>
         <div className="w-px h-4 bg-[#E4E2DC] mx-0.5" />
         <button
           type="button"
-          onClick={handleBackToCenter}
-          title="Back to Center"
+          onClick={handleFitAll}
+          title="Fit All Elements & Connections"
           className="ios-press inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-[#0A5386] text-white rounded-full"
         >
-          <Crosshair className="w-3 h-3" />
-          Back to Center
+          <Maximize2 className="w-3 h-3" />
+          Fit All
         </button>
       </div>
 
-      {/* Floating Undo Toast */}
-      {pendingDeletes.length > 0 && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 paper-card rounded-full pl-3.5 pr-1.5 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-2.5 backdrop-blur-md">
-          <span className="text-xs font-medium text-[#18181B] max-w-[200px] truncate">
-            Removed {pendingDeletes[pendingDeletes.length - 1].label}
-          </span>
-          <button
-            type="button"
-            onClick={() => handleUndoDelete(pendingDeletes[pendingDeletes.length - 1].id)}
-            className="ios-press inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-[#0A5386] text-white rounded-full"
-          >
-            <Undo2 className="w-3 h-3" />
-            Undo
-          </button>
-        </div>
-      )}
-
       {/* Empty Canvas Subtle Hint */}
-      {totalPins === 0 && (
+      {totalPins + zones.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="text-center px-4">
             <p className="text-sm font-medium text-[#71717A]">
               Blank infinite board for {project.title}
             </p>
             <p className="text-xs text-[#A1A1AA] mt-1">
-              Use the floating pill below to add pages (with checklists &amp; colors), connect elements with arrows, or pin images &amp; files.
+              Use the floating pill below to add pages, zones, sketches, arrows, or pin images &amp; files.
             </p>
           </div>
         </div>
@@ -1581,7 +1834,6 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           backgroundPosition: `${pan.x}px ${pan.y}px`,
         }}
       >
-        {/* NOTE: No will-change-transform so text & SVG re-rasterize crisply when zoomed in */}
         <div
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
@@ -1590,66 +1842,64 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           className="absolute top-0 left-0 select-text"
         >
           {/* Resizable Discussion Zones (z-0, behind pins) */}
-          {zones.map((zone) => (
-            <div
-              key={zone.id}
-              style={{
-                left: zone.x,
-                top: zone.y,
-                width: zone.w,
-                height: zone.h,
-                backgroundColor: `${zone.color}12`,
-                borderColor: `${zone.color}55`,
-              }}
-              className="group absolute rounded-2xl border-2 border-dashed z-0 select-none"
-            >
+          {zones.map((zone) => {
+            const isZoneSelected = selectedZoneId === zone.id;
+            return (
               <div
-                onPointerDown={(e) => startZoneDrag(zone, e)}
-                className="px-3.5 py-2 flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing"
+                key={zone.id}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  setSelectedZoneId(zone.id);
+                  setFocusedPageId(null);
+                  setSelectedConnId(null);
+                }}
+                style={{
+                  left: zone.x,
+                  top: zone.y,
+                  width: zone.w,
+                  height: zone.h,
+                  backgroundColor: `${zone.color}12`,
+                  borderColor: isZoneSelected ? zone.color : `${zone.color}55`,
+                }}
+                className={`group absolute rounded-2xl border-2 border-dashed z-0 select-none ${
+                  isZoneSelected ? 'ring-2 ring-offset-2 ring-[#0A5386]/40' : ''
+                }`}
               >
-                <input
-                  type="text"
-                  value={zone.title}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onChange={(e) => updateZone(zone.id, { title: e.target.value })}
-                  className="text-xs font-bold bg-transparent focus:outline-none w-full"
-                  style={{ color: zone.color, backgroundColor: 'transparent' }}
-                />
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shrink-0">
-                  {CONNECTOR_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={() => updateZone(zone.id, { color: c })}
-                      style={{ backgroundColor: c }}
-                      className="w-2.5 h-2.5 rounded-full border border-white/60"
-                    />
-                  ))}
+                <div
+                  onPointerDown={(e) => startZoneDrag(zone, e)}
+                  className="px-3.5 py-2 flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing"
+                >
+                  <input
+                    type="text"
+                    value={zone.title}
+                    onChange={(e) => updateZone(zone.id, { title: e.target.value })}
+                    className="text-xs font-bold bg-transparent focus:outline-none w-full"
+                    style={{ color: zone.color, backgroundColor: 'transparent' }}
+                  />
                   <button
                     type="button"
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => deleteZone(zone.id)}
-                    className="p-0.5 text-[#71717A] hover:text-[#DC2626]"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-[#71717A] hover:text-[#DC2626] shrink-0"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              </div>
 
-              {/* Bottom-Right Resize Handle */}
-              <div
-                onPointerDown={(e) => startZoneResize(zone, e)}
-                title="Drag to resize zone"
-                className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-1 right-1 w-4 h-4 cursor-nwse-resize flex items-end justify-end p-0.5"
-              >
-                <span
-                  className="w-2.5 h-2.5 border-r-2 border-b-2 rounded-br-xs"
-                  style={{ borderColor: zone.color }}
-                />
+                {/* Bottom-Right Resize Handle */}
+                <div
+                  onPointerDown={(e) => startZoneResize(zone, e)}
+                  title="Drag to resize zone"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-1 right-1 w-4 h-4 cursor-nwse-resize flex items-end justify-end p-0.5"
+                >
+                  <span
+                    className="w-2.5 h-2.5 border-r-2 border-b-2 rounded-br-xs"
+                    style={{ borderColor: zone.color }}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Pinned Design Inspo Images & Uploaded Files */}
           {projectDocs.map((doc, idx) => {
@@ -1679,7 +1929,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                     <button
                       type="button"
                       onPointerDown={(e) => e.stopPropagation()}
-                      onClick={() => queueDelete('doc', doc.id, doc.name)}
+                      onClick={() => queueDelete('doc', doc.id)}
                       title="Delete pin"
                       className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2.5 -right-2.5 z-10 w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-md"
                     >
@@ -1730,7 +1980,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                     <button
                       type="button"
                       onPointerDown={(e) => e.stopPropagation()}
-                      onClick={() => queueDelete('doc', doc.id, doc.name)}
+                      onClick={() => queueDelete('doc', doc.id)}
                       title="Delete pin"
                       className="w-6 h-6 rounded-full bg-[#18181B]/85 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-sm"
                     >
@@ -1760,25 +2010,33 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           {pinnedPages.map((note, idx) => {
             const cardId = `page_${note.id}`;
             const fallbackPos = getPos(cardId, projectDocs.length + idx);
-            const parsed = parsePinPageContent(note.content);
             const activeSide = connectFrom?.cardId === cardId ? connectFrom.side : null;
             return (
               <FloatingPagePin
                 key={note.id}
+                ref={(h) => {
+                  pageHandlesRef.current[note.id] = h;
+                }}
                 note={note}
                 pos={positions[cardId] ?? fallbackPos}
                 connectActive={connectMode}
+                isFocusedCard={focusedPageId === note.id}
                 activeAnchorSide={activeSide}
+                onFocusCard={() => {
+                  setFocusedPageId(note.id);
+                  setSelectedZoneId(null);
+                  setSelectedConnId(null);
+                }}
                 onSelectAnchor={(side) => handleSelectAnchor(cardId, side)}
                 onMeasure={registerCardRef(cardId)}
                 onDragStart={(e) => startDrag(cardId, e, projectDocs.length + idx)}
                 onUpdate={(content) => updateProjectNote(note.id, content)}
-                onDelete={() => queueDelete('note', note.id, parsed.title || 'Page')}
+                onDelete={() => queueDelete('note', note.id)}
               />
             );
           })}
 
-          {/* Surface-Attached SVG Flow Arrows & Line Connectors (z-10: above card surfaces, below hover toolbars z-40) */}
+          {/* Orthogonal Rounded-Corner SVG Connectors & Freehand Pen Layer */}
           <svg className="pointer-events-none overflow-visible absolute top-0 left-0 w-px h-px z-10">
             <defs>
               {CONNECTOR_COLORS.map((c) => {
@@ -1810,13 +2068,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               const toSide: AnchorSide = conn.toAnchor ?? 'left';
               const from = getAnchorPoint(rFrom, fromSide);
               const to = getAnchorPoint(rTo, toSide);
-
-              const dist = Math.max(40, Math.hypot(to.x - from.x, to.y - from.y) * 0.35);
-              const off1 = getDirectionalOffset(fromSide, dist);
-              const off2 = getDirectionalOffset(toSide, dist);
-              const d = `M ${from.x} ${from.y} C ${from.x + off1.dx} ${from.y + off1.dy}, ${
-                to.x + off2.dx
-              } ${to.y + off2.dy}, ${to.x} ${to.y}`;
+              const d = buildRoundedOrthogonalPath(from, fromSide, to, toSide, 14);
 
               const colorKey = conn.color.replace('#', '');
               const hasArrow = conn.style === 'arrow' || conn.style === 'dashed';
@@ -1829,6 +2081,8 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedConnId(conn.id);
+                    setFocusedPageId(null);
+                    setSelectedZoneId(null);
                     setConnectMode(false);
                   }}
                   className="pointer-events-auto cursor-pointer"
@@ -1852,7 +2106,6 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                     strokeDasharray={getStrokeDash(conn.style)}
                     markerEnd={hasArrow ? `url(#arrow-${colorKey})` : undefined}
                   />
-                  {/* Snap endpoint dots when selected */}
                   {isSelected && (
                     <>
                       <circle cx={from.x} cy={from.y} r={4.5} fill="#FFFFFF" stroke={conn.color} strokeWidth={2} />
