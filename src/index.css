@@ -80,8 +80,16 @@
 }
 
 .dark-theme .floating-sheet {
-  background-color: #1f232b;
-  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.45);
+  background-color: #fcfbf8;
+  color: #18181b;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.52);
+}
+
+.dark-theme .floating-sheet input,
+.dark-theme .floating-sheet .notebook-editor,
+.dark-theme .floating-sheet .text-\[\#18181B\],
+.dark-theme .floating-sheet .text-\[\#3F3F46\] {
+  color: #18181b !important;
 }
 
 .dark-theme .paper-card {
@@ -110,10 +118,10 @@
 }
 
 .dark-theme .ruled-paper {
-  background-color: #1b1d24;
-  background-image: linear-gradient(to bottom, transparent 30px, #2e323d 31px, transparent 32px);
+  background-color: #fcfbf8;
+  background-image: linear-gradient(to bottom, transparent 30px, #e7e2d5 31px, transparent 32px);
   background-attachment: local;
-  color: #f4f4f5;
+  color: #18181b;
 }
 
 .dark-theme .notebook-title-input,
@@ -185,52 +193,6 @@
   background: linear-gradient(to bottom, rgba(38, 24, 10, 0.24), transparent);
   filter: blur(2px);
   pointer-events: none;
-}
-
-.dark-theme .book-shelf-ledge {
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.025) 0px,
-      rgba(255, 255, 255, 0.025) 2px,
-      transparent 2px,
-      transparent 11px
-    ),
-    linear-gradient(
-      to bottom,
-      #4a372b 0%,
-      #38281f 28%,
-      #271c15 72%,
-      #19110d 100%
-    );
-  border-top: 1px solid rgba(255, 226, 196, 0.16);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 232, 210, 0.12),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.65),
-    0 18px 30px -6px rgba(0, 0, 0, 0.85),
-    0 5px 10px rgba(0, 0, 0, 0.55);
-}
-
-.dark-theme .book-shelf-ledge::before {
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.02) 0px,
-      rgba(255, 255, 255, 0.02) 3px,
-      transparent 3px,
-      transparent 16px
-    ),
-    linear-gradient(
-      to bottom,
-      #211711 0%,
-      #30221a 55%,
-      #423126 100%
-    );
-  box-shadow: inset 0 8px 12px -4px rgba(0, 0, 0, 0.65);
-}
-
-.dark-theme .book-shelf-ledge::after {
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent);
 }
 
 /* Soft Diffused Hover Spotlight for Books in Night Mode */
@@ -476,23 +438,6 @@
   background-color: #ffffff;
 }
 
-.dark-theme .notebook-pages-pane {
-  background-color: #252b37;
-  background-image: linear-gradient(90deg,
-      rgba(255, 255, 255, 0.03) 0%,
-      transparent 24%,
-      rgba(0, 0, 0, 0.35) 100%);
-  border-color: #363e4f;
-}
-
-.dark-theme .notebook-editor-pane {
-  background-color: #2b3240;
-  background-image: linear-gradient(90deg,
-      rgba(0, 0, 0, 0.38) 0%,
-      rgba(255, 255, 255, 0.03) 12%,
-      transparent 45%);
-}
-
 .notebook-cover-shell {
   background: linear-gradient(145deg, #35302a 0%, #24201c 55%, #171411 100%);
   box-shadow:
@@ -520,54 +465,24 @@
 }
 
 .dark-theme .notebook-spread {
-  background-color: #252b37;
-  box-shadow:
-    -3px 0 0 #3a4254,
-    -6px 0 0 #2d3444,
-    3px 0 0 #3a4254,
-    6px 0 0 #2d3444,
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  color: #18181b;
 }
 
-.dark-theme .notebook-page-item {
-  background-color: rgba(50, 58, 74, 0.78);
-  border-color: #414b60;
+.dark-theme .notebook-spread input,
+.dark-theme .notebook-spread .notebook-editor,
+.dark-theme .notebook-spread .text-\[\#18181B\],
+.dark-theme .notebook-spread .text-\[\#1C1C1E\],
+.dark-theme .notebook-spread .text-\[\#23211E\],
+.dark-theme .notebook-spread .text-\[\#3A3A3C\],
+.dark-theme .notebook-spread .notebook-tool-btn {
+  color: #18181b !important;
 }
 
-.dark-theme .notebook-page-item:hover {
-  background-color: #3a4356;
-}
-
-.dark-theme .notebook-page-item-active {
-  background-color: #38445c;
-  border-color: #60a5fa;
-}
-
-.dark-theme .notebook-toolbar {
-  background-color: #353d4e;
-  border-color: #455066;
-}
-
-.dark-theme .notebook-tool-btn {
-  color: #f4f4f5;
-}
-
-.dark-theme .notebook-tool-btn:hover {
-  background-color: #465168;
-}
-
-.dark-theme .ruled-paper {
-  background-color: #2f3646;
-  background-image: linear-gradient(to bottom,
-    transparent 30px,
-    rgba(255, 255, 255, 0.11) 31px,
-    transparent 32px);
-  color: #f4f4f5;
-  border-color: #414b60;
-}
-
-.dark-theme .notebook-editor hr {
-  border-top-color: rgba(255, 255, 255, 0.14);
+.dark-theme .notebook-spread .bg-white,
+.dark-theme .notebook-spread .bg-white\/80,
+.dark-theme .notebook-spread .bg-\[\#FAF9F6\],
+.dark-theme .notebook-spread .bg-\[\#FCFBF8\] {
+  background-color: #ffffff !important;
 }
 
 /* Frosted Glassmorphic Card */
