@@ -69,7 +69,28 @@ export const JournalView: React.FC = () => {
   const [newBookInput, setNewBookInput] = useState('');
   const [newBookColor, setNewBookColor] = useState(BOOK_COLORS[0]);
   const [newBookFirstPage, setNewBookFirstPage] = useState('');
-  const [customBooks, setCustomBooks] = useState<{ name: string; color: string }[]>([]);
+  const [customBooks, setCustomBooks] = useState<{ name: string; color: string }[]>(() => {
+    try {
+      const raw = localStorage.getItem('ldoi_custom_books_v1');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const persistCustomBooks = (
+    updater: (prev: { name: string; color: string }[]) => { name: string; color: string }[]
+  ) => {
+    setCustomBooks((prev) => {
+      const next = updater(prev);
+      try {
+        localStorage.setItem('ldoi_custom_books_v1', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
   const [tagInput, setTagInput] = useState('');
   const [fontColor, setFontColor] = useState('#18181B');
   const editorRef = useRef<HTMLDivElement | null>(null);
@@ -100,6 +121,9 @@ export const JournalView: React.FC = () => {
     e: React.MouseEvent<HTMLButtonElement>
   ) => {
     clearOpenTimers();
+    persistCustomBooks((prev) =>
+      prev.some((b) => b.name === book.name) ? prev : [...prev, { name: book.name, color: book.color }]
+    );
     const r = e.currentTarget.getBoundingClientRect();
     setOpeningBook({
       name: book.name,
@@ -241,7 +265,7 @@ export const JournalView: React.FC = () => {
     e.preventDefault();
     const clean = newBookInput.trim();
     if (!clean) return;
-    setCustomBooks((prev) =>
+    persistCustomBooks((prev) =>
       prev.some((b) => b.name === clean) ? prev : [...prev, { name: clean, color: newBookColor }]
     );
     setShowNewBookModal(false);
@@ -268,7 +292,7 @@ export const JournalView: React.FC = () => {
     for (const id of pageIds) {
       await deleteJournalEntry(id);
     }
-    setCustomBooks((prev) => prev.filter((b) => b.name !== bookName));
+    persistCustomBooks((prev) => prev.filter((b) => b.name !== bookName));
     if (openBookName === bookName) {
       setOpenBookName(null);
       setSelectedId(null);
@@ -937,7 +961,17 @@ export const JournalView: React.FC = () => {
                       )}
                     <button
                       type="button"
-                      onClick={() => deleteJournalEntry(activeEntry.id)}
+                      onClick={() => {
+                        const currentBook = books.find((b) => b.name === openBookName);
+                        if (currentBook) {
+                          persistCustomBooks((prev) =>
+                            prev.some((b) => b.name === currentBook.name)
+                              ? prev
+                              : [...prev, { name: currentBook.name, color: currentBook.color }]
+                          );
+                        }
+                        deleteJournalEntry(activeEntry.id);
+                      }}
                       className="p-1.5 text-[#71717A] hover:text-[#DC2626]"
                     >
                       <Trash2 className="w-4 h-4" />
