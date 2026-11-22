@@ -856,12 +856,22 @@ export const LdoiProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteDocument = useCallback(
     async (id: string) => {
+      const target = state.documents.find((d) => d.id === id);
       if (syncMode === 'supabase' && supabase) {
+        if (target?.url) {
+          const marker = '/object/public/ldoi-documents/';
+          const idx = target.url.indexOf(marker);
+          const storagePath =
+            idx !== -1
+              ? decodeURIComponent(target.url.slice(idx + marker.length))
+              : `${target.projectId || target.enquiryId || 'general'}/${target.id}_${target.name}`;
+          await supabase.storage.from('ldoi-documents').remove([storagePath]);
+        }
         await supabase.from('documents').delete().eq('id', id);
       }
       commitLocalState((prev) => ({ ...prev, documents: prev.documents.filter((d) => d.id !== id) }));
     },
-    [syncMode, commitLocalState]
+    [state.documents, syncMode, commitLocalState]
   );
 
   // Enquiries
