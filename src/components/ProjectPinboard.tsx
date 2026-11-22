@@ -1901,7 +1901,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
       )}
 
       {/* Fixed Floating Pill Bar (Bottom-Center) */}
-      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-2 py-1.5 shadow-2xl border border-[#E4E2DC] flex items-center gap-1.5 max-w-[95vw] overflow-x-auto backdrop-blur-md">
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-2 py-1.5 shadow-2xl border border-[#E4E2DC] flex items-center gap-1.5 max-w-[95vw] overflow-x-auto backdrop-blur-md transition-all duration-300 ease-out">
         <button
           type="button"
           onClick={handleInstantAddPage}
