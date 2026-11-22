@@ -3,6 +3,7 @@ import { ArrowLeft, BookOpen, Check, Plus, Search, Trash2, X } from 'lucide-reac
 import { JOURNAL_TAGS, formatDateShort } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
 import type { JournalEntry, JournalKind } from '../types';
+import { AnimatedDeleteButton } from './AnimatedDeleteButton';
 import { ConfirmModal } from './ConfirmModal';
 
 const BOOK_COLORS = ['#0A5386', '#254454', '#133F47', '#8B1E1E', '#1B5E5A', '#2F333C'];
@@ -357,8 +358,8 @@ export const JournalView: React.FC = () => {
                     const pages = journalEntries.filter((e) => getEntryBookName(e) === book.name);
                     return (
                       <div key={book.name} className="group relative">
-                        <button
-                          type="button"
+                        <AnimatedDeleteButton
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteBook(
@@ -367,10 +368,8 @@ export const JournalView: React.FC = () => {
                             );
                           }}
                           title={`Delete ${book.name}`}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2.5 -right-2.5 z-20 w-7 h-7 rounded-full bg-[#18181B]/90 hover:bg-[#DC2626] text-white flex items-center justify-center shadow-lg"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                          className="!absolute -top-2.5 -right-2.5 z-20 opacity-0 group-hover:opacity-100"
+                        />
 
                         <button
                           type="button"
