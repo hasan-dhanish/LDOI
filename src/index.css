@@ -103,15 +103,14 @@
 }
 
 .dark-theme .ruled-paper {
-  background-color: #fcfbf8;
-  background-image: linear-gradient(to bottom, transparent 30px, #e5dfd1 31px, transparent 32px);
+  background-color: #1b1d24;
+  background-image: linear-gradient(to bottom, transparent 30px, #2e323d 31px, transparent 32px);
   background-attachment: local;
-  color: #18181b;
+  color: #f4f4f5;
 }
 
 .dark-theme .notebook-title-input {
   background-color: transparent !important;
-  color: #18181b !important;
 }
 
 /* Apple Books 3D Shelf Ledge */
@@ -367,64 +366,111 @@
 }
 
 .dark-theme .notebook-pages-pane {
-  background-color: #f5f1e7;
-  border-color: #d6d0c2;
-  color: #18181b;
+  background-color: #171a22;
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    transparent 24%,
+    rgba(0, 0, 0, 0.45) 100%
+  );
+  border-color: #272b36;
 }
 
 .dark-theme .notebook-editor-pane {
-  background-color: #fcfbf8;
-  color: #18181b;
+  background-color: #1b1f29;
+  background-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.48) 0%,
+    rgba(255, 255, 255, 0.025) 12%,
+    transparent 45%
+  );
 }
 
-.dark-theme .notebook-editor-pane input,
-.dark-theme .notebook-editor-pane select {
-  color: #18181b;
+.notebook-cover-shell {
+  background: linear-gradient(145deg, #35302a 0%, #24201c 55%, #171411 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.12),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.55),
+    0 22px 50px rgba(0, 0, 0, 0.45);
 }
 
-.dark-theme .notebook-editor-pane select {
-  background-color: #ffffff;
-  border-color: #e4e2dc;
+.dark-theme .notebook-cover-shell {
+  background: linear-gradient(145deg, #2b2621 0%, #1b1815 55%, #100e0c 100%);
+  border-color: rgba(255, 232, 200, 0.12);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 232, 200, 0.1),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.75),
+    0 26px 60px rgba(0, 0, 0, 0.72);
+}
+
+.notebook-spread {
+  box-shadow:
+    -3px 0 0 #e5dfd2,
+    -6px 0 0 #cfc8b8,
+    3px 0 0 #e5dfd2,
+    6px 0 0 #cfc8b8,
+    inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.dark-theme .notebook-spread {
+  background-color: #171a22;
+  box-shadow:
+    -3px 0 0 #262b38,
+    -6px 0 0 #1b1f29,
+    3px 0 0 #262b38,
+    6px 0 0 #1b1f29,
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .dark-theme .notebook-page-item {
-  background-color: rgba(255, 255, 255, 0.78);
-  border-color: #e4e2dc;
-  color: #18181b;
+  background-color: rgba(34, 38, 49, 0.75);
+  border-color: #2c3140;
 }
 
 .dark-theme .notebook-page-item:hover {
-  background-color: #ffffff;
+  background-color: #262b38;
 }
 
 .dark-theme .notebook-page-item-active {
-  background-color: #ffffff;
-  border-color: #0a5386;
-  color: #18181b;
+  background-color: #232a3a;
+  border-color: #38bdf8;
 }
 
 .dark-theme .notebook-toolbar {
-  background-color: #efeae0;
-  border-color: #ded8ca;
+  background-color: #242834;
+  border-color: #323848;
 }
 
 .dark-theme .notebook-tool-btn {
-  color: #18181b;
+  color: #e4e4e7;
 }
 
 .dark-theme .notebook-tool-btn:hover {
-  background-color: #ffffff;
+  background-color: #323848;
 }
 
 .dark-theme .ruled-paper {
-  background-color: #fcfbf8;
-  background-image: linear-gradient(to bottom, transparent 30px, #e5dfd1 31px, transparent 32px);
-  color: #18181b;
-  border-color: #e4e2dc;
+  background-color: #1a1e28;
+  background-image:
+    linear-gradient(
+      to right,
+      transparent 34px,
+      rgba(185, 28, 28, 0.28) 35px,
+      transparent 36px
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 30px,
+      rgba(255, 255, 255, 0.085) 31px,
+      transparent 32px
+    );
+  padding-left: 44px !important;
+  color: #f4f4f5;
+  border-color: #2c3140;
 }
 
 .dark-theme .notebook-editor hr {
-  border-top-color: rgba(140, 128, 110, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.14);
 }
 
 /* Frosted Glassmorphic Card */

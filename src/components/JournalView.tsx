@@ -823,8 +823,8 @@ export const JournalView: React.FC = () => {
       </div>
 
       {/* Realistic Physical Hardcover Ring-Bound Open Book */}
-      <div className="p-2.5 sm:p-3 rounded-[22px] bg-[#2C2925] shadow-[0_18px_44px_rgba(0,0,0,0.28)] border border-black/30">
-        <div className="relative rounded-xl overflow-hidden grid lg:grid-cols-12 min-h-[560px] bg-[#FCFBF8] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]">
+      <div className="notebook-cover-shell p-3 sm:p-4 rounded-[22px] border border-black/30">
+        <div className="notebook-spread relative rounded-xl overflow-hidden grid lg:grid-cols-12 min-h-[560px] bg-[#FCFBF8]">
           {/* Realistic Metallic Twin-Loop Binder Rings + Punched Holes (Desktop) */}
           <div className="hidden lg:flex flex-col justify-evenly items-center absolute left-1/3 -translate-x-1/2 inset-y-4 z-20 pointer-events-none">
             {[0, 1, 2, 3, 4].map((ring) => (
@@ -1117,7 +1117,7 @@ export const JournalView: React.FC = () => {
                   <div className="w-px h-4 bg-current opacity-15 mx-1" />
 
                   <div className="flex items-center gap-1 px-1">
-                    {['#18181B', '#0A5386', '#8B1E1E', '#133F47'].map((ink) => (
+                    {['#F4F4F5', '#3B82F6', '#EF4444', '#10B981'].map((ink) => (
                       <button
                         key={ink}
                         type="button"
