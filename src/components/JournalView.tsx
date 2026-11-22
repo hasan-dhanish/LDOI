@@ -45,18 +45,54 @@ export const JournalView: React.FC = () => {
     name: string;
     color: string;
     firstPageId: string | null;
+    fromRect: { left: number; top: number; width: number; height: number };
+    stage: 'start' | 'center' | 'open' | 'zoom';
   } | null>(null);
-  const openTimerRef = useRef<number | null>(null);
+  const openTimersRef = useRef<number[]>([]);
 
-  const triggerOpenBook = (book: { name: string; color: string }, firstPageId: string | null) => {
-    if (openTimerRef.current) window.clearTimeout(openTimerRef.current);
-    setOpeningBook({ name: book.name, color: book.color, firstPageId });
-    openTimerRef.current = window.setTimeout(() => {
+  const clearOpenTimers = () => {
+    openTimersRef.current.forEach((t) => window.clearTimeout(t));
+    openTimersRef.current = [];
+  };
+
+  useEffect(() => clearOpenTimers, []);
+
+  const triggerOpenBook = (
+    book: { name: string; color: string },
+    firstPageId: string | null,
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    clearOpenTimers();
+    const r = e.currentTarget.getBoundingClientRect();
+    setOpeningBook({
+      name: book.name,
+      color: book.color,
+      firstPageId,
+      fromRect: { left: r.left, top: r.top, width: r.width, height: r.height },
+      stage: 'start',
+    });
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        setOpeningBook((prev) => (prev ? { ...prev, stage: 'center' } : null));
+      });
+    });
+
+    const t1 = window.setTimeout(() => {
+      setOpeningBook((prev) => (prev ? { ...prev, stage: 'open' } : null));
+    }, 320);
+
+    const t2 = window.setTimeout(() => {
+      setOpeningBook((prev) => (prev ? { ...prev, stage: 'zoom' } : null));
+    }, 640);
+
+    const t3 = window.setTimeout(() => {
       setOpenBookName(book.name);
       setSelectedId(firstPageId);
       setOpeningBook(null);
-      openTimerRef.current = null;
-    }, 640);
+    }, 960);
+
+    openTimersRef.current = [t1, t2, t3];
   };
 
   const [kindFilter, setKindFilter] = useState<'All' | JournalKind>('All');
@@ -338,7 +374,7 @@ export const JournalView: React.FC = () => {
 
                         <button
                           type="button"
-                          onClick={() => triggerOpenBook(book, pages[0]?.id ?? null)}
+                          onClick={(e) => triggerOpenBook(book, pages[0]?.id ?? null, e)}
                           className="ios-press relative text-left focus:outline-none block"
                         >
                           <div className="absolute -bottom-1 inset-x-1 h-2.5 bg-black/45 blur-[4px] rounded-full transition-all duration-200 group-hover:scale-x-90 group-hover:opacity-60" />
@@ -577,62 +613,105 @@ export const JournalView: React.FC = () => {
           onCancel={() => setDeleteBookTarget(null)}
         />
 
-        {/* 3D Notebook Opening + Zoom-In Simulation */}
-        {openingBook && (
-          <div className="fixed inset-0 z-50 bg-black/35 backdrop-blur-sm flex items-center justify-center pointer-events-none">
-            <div className="animate-book-stage relative w-52 h-72">
-              {/* Inside Cream Ruled Page */}
-              <div
-                className="absolute inset-0 rounded-r-xl rounded-l-[4px] ruled-paper shadow-2xl border border-[#E4E2DC] p-5 flex flex-col justify-between"
-              >
-                <div className="text-xs font-semibold text-[#18181B] opacity-75 truncate">
-                  {openingBook.name}
-                </div>
-                <div className="text-[10px] font-mono-num text-[#71717A] text-right">
-                  Opening...
-                </div>
-              </div>
+        {/* 3D Notebook: Glide from Shelf -> Center -> Open Cover -> Zoom to Full Screen */}
+        {openingBook && (() => {
+          const { fromRect, stage } = openingBook;
+          const dx =
+            typeof window !== 'undefined'
+              ? window.innerWidth / 2 - (fromRect.left + fromRect.width / 2)
+              : 0;
+          const dy =
+            typeof window !== 'undefined'
+              ? window.innerHeight / 2 - (fromRect.top + fromRect.height / 2)
+              : 0;
+          const scale =
+            stage === 'start' ? 1 : stage === 'center' ? 1.55 : stage === 'open' ? 1.65 : 8.5;
+          const tx = stage === 'start' ? 0 : dx;
+          const ty = stage === 'start' ? 0 : dy;
+          const isCoverOpen = stage === 'open' || stage === 'zoom';
 
-              {/* 3D Swinging Hardcover Front */}
+          return (
+            <div
+              className="fixed inset-0 z-50 pointer-events-none transition-colors duration-300"
+              style={{
+                backgroundColor:
+                  stage === 'start'
+                    ? 'rgba(0, 0, 0, 0)'
+                    : stage === 'zoom'
+                    ? 'rgba(252, 251, 248, 0.92)'
+                    : 'rgba(0, 0, 0, 0.35)',
+                backdropFilter: stage === 'start' ? 'none' : 'blur(4px)',
+              }}
+            >
               <div
-                className="animate-book-cover absolute inset-0 rounded-r-xl rounded-l-[4px] p-5 flex flex-col justify-between text-white shadow-[6px_14px_30px_rgba(0,0,0,0.45)] overflow-hidden"
-                style={{ backgroundColor: openingBook.color, backfaceVisibility: 'hidden' }}
+                style={{
+                  position: 'fixed',
+                  left: fromRect.left,
+                  top: fromRect.top,
+                  width: fromRect.width,
+                  height: fromRect.height,
+                  perspective: '1400px',
+                  transform: `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`,
+                  opacity: stage === 'zoom' ? 0 : 1,
+                  transition:
+                    'transform 340ms cubic-bezier(0.22, 1, 0.36, 1), opacity 320ms ease-in',
+                }}
               >
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background:
-                      'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.02) 45%, rgba(0,0,0,0.28) 100%)',
-                  }}
-                />
-                <div
-                  className="absolute inset-y-0 left-0 w-4 pointer-events-none"
-                  style={{
-                    background:
-                      'linear-gradient(90deg, rgba(0,0,0,0.45) 0%, rgba(255,255,255,0.18) 38%, rgba(0,0,0,0.12) 78%, rgba(0,0,0,0.5) 100%)',
-                  }}
-                />
-                <div className="absolute inset-y-0 left-4 w-[1px] bg-white/18 pointer-events-none" />
-                <div className="absolute inset-y-3 left-6 right-4 rounded-sm border border-white/12 pointer-events-none" />
-                <div
-                  className="absolute top-0 right-5 w-3.5 h-9 bg-[#8B1E1E] shadow-[0_2px_4px_rgba(0,0,0,0.35)] pointer-events-none"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%)',
-                  }}
-                />
-                <div className="relative z-10 pl-4 pr-2 pt-4">
-                  <h3 className="text-lg font-bold leading-snug text-white line-clamp-3">
+                {/* Inside Cream Ruled Page */}
+                <div className="absolute inset-0 rounded-r-lg rounded-l-[3px] ruled-paper shadow-2xl border border-[#E4E2DC] p-3.5 flex flex-col justify-between">
+                  <div className="text-[11px] font-semibold text-[#18181B] opacity-75 truncate">
                     {openingBook.name}
-                  </h3>
+                  </div>
                 </div>
-                <div className="relative z-10 pl-4 pr-1 flex items-center justify-between text-[11px] font-mono-num text-white/85 pt-2 border-t border-white/15">
-                  <span>LDOI Notebook</span>
-                  <BookOpen className="w-3.5 h-3.5 opacity-80" />
+
+                {/* 3D Swinging Hardcover Front */}
+                <div
+                  className="absolute inset-0 rounded-r-lg rounded-l-[3px] p-3.5 flex flex-col justify-between text-white shadow-[4px_10px_24px_rgba(0,0,0,0.42)] overflow-hidden"
+                  style={{
+                    backgroundColor: openingBook.color,
+                    transformOrigin: 'left center',
+                    transformStyle: 'preserve-3d',
+                    backfaceVisibility: 'hidden',
+                    transform: isCoverOpen ? 'rotateY(-155deg)' : 'rotateY(0deg)',
+                    transition: 'transform 360ms cubic-bezier(0.22, 1, 0.36, 1)',
+                  }}
+                >
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background:
+                        'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.02) 45%, rgba(0,0,0,0.28) 100%)',
+                    }}
+                  />
+                  <div
+                    className="absolute inset-y-0 left-0 w-3.5 pointer-events-none"
+                    style={{
+                      background:
+                        'linear-gradient(90deg, rgba(0,0,0,0.45) 0%, rgba(255,255,255,0.18) 38%, rgba(0,0,0,0.12) 78%, rgba(0,0,0,0.5) 100%)',
+                    }}
+                  />
+                  <div className="absolute inset-y-0 left-3.5 w-[1px] bg-white/18 pointer-events-none" />
+                  <div className="absolute inset-y-2.5 left-5 right-3 rounded-sm border border-white/12 pointer-events-none" />
+                  <div
+                    className="absolute top-0 right-4 w-3 h-7 bg-[#8B1E1E] shadow-[0_2px_4px_rgba(0,0,0,0.35)] pointer-events-none"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%)',
+                    }}
+                  />
+                  <div className="relative z-10 pl-3.5 pr-2 pt-3">
+                    <h3 className="text-sm font-bold leading-snug text-white line-clamp-3">
+                      {openingBook.name}
+                    </h3>
+                  </div>
+                  <div className="relative z-10 pl-3.5 pr-1 flex items-center justify-between text-[10px] font-mono-num text-white/85 pt-1.5 border-t border-white/15">
+                    <span>LDOI</span>
+                    <BookOpen className="w-3 h-3 opacity-80" />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     );
   }
