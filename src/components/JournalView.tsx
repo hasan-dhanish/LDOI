@@ -42,6 +42,7 @@ export const JournalView: React.FC = () => {
     name: string;
     pageIds: string[];
   } | null>(null);
+  const [deleteMode, setDeleteMode] = useState(false);
   const [openingBook, setOpeningBook] = useState<{
     name: string;
     color: string;
@@ -231,6 +232,7 @@ export const JournalView: React.FC = () => {
     if (!deleteBookTarget) return;
     const { name: bookName, pageIds } = deleteBookTarget;
     setDeleteBookTarget(null);
+    setDeleteMode(false);
     for (const id of pageIds) {
       await deleteJournalEntry(id);
     }
@@ -326,9 +328,26 @@ export const JournalView: React.FC = () => {
               />
             </div>
 
+            {deleteMode ? (
+              <button
+                type="button"
+                onClick={() => setDeleteMode(false)}
+                className="ios-press px-3 py-1.5 text-xs font-semibold bg-[#8B1E1E] text-white rounded-full shrink-0"
+              >
+                Done Deleting
+              </button>
+            ) : (
+              <AnimatedDeleteButton
+                size="sm"
+                onClick={() => setDeleteMode(true)}
+                title="Delete a book"
+              />
+            )}
+
             <button
               type="button"
               onClick={() => {
+                setDeleteMode(false);
                 setNewBookInput('');
                 setNewBookFirstPage('');
                 setNewBookColor(BOOK_COLORS[books.length % BOOK_COLORS.length]);
@@ -341,6 +360,19 @@ export const JournalView: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {deleteMode && (
+          <div className="px-4 py-2 rounded-xl bg-[#8B1E1E]/10 border border-[#8B1E1E]/25 text-xs font-medium text-[#DC2626] flex items-center justify-between">
+            <span>Click any book on the shelf to delete it.</span>
+            <button
+              type="button"
+              onClick={() => setDeleteMode(false)}
+              className="text-xs font-semibold underline"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
 
         {shelfRows.length === 0 ? (
           <div className="pt-8">
@@ -360,8 +392,19 @@ export const JournalView: React.FC = () => {
                       <div key={book.name} className="group relative">
                         <button
                           type="button"
-                          onClick={(e) => triggerOpenBook(book, pages[0]?.id ?? null, e)}
-                          className="ios-press relative text-left focus:outline-none block"
+                          onClick={(e) => {
+                            if (deleteMode) {
+                              handleDeleteBook(
+                                book.name,
+                                pages.map((p) => p.id)
+                              );
+                              return;
+                            }
+                            triggerOpenBook(book, pages[0]?.id ?? null, e);
+                          }}
+                          className={`ios-press relative text-left focus:outline-none block ${
+                            deleteMode ? 'ring-2 ring-[#DC2626]/70 rounded-lg' : ''
+                          }`}
                         >
                           <div className="absolute -bottom-1 inset-x-1 h-2.5 bg-black/45 blur-[4px] rounded-full transition-all duration-200 group-hover:scale-x-90 group-hover:opacity-60" />
 
