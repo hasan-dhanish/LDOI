@@ -1,8 +1,23 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, BookOpen, Check, Plus, Search, Trash2, X } from 'lucide-react';
-import { JOURNAL_TAGS, formatDateShort } from '../constants';
+import {
+  ArrowLeft,
+  Bold,
+  BookOpen,
+  Check,
+  Italic,
+  List,
+  ListOrdered,
+  Plus,
+  RemoveFormatting,
+  Search,
+  Strikethrough,
+  Trash2,
+  Underline,
+  X,
+} from 'lucide-react';
+import { formatDateShort } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
-import type { JournalEntry, JournalKind } from '../types';
+import type { JournalEntry } from '../types';
 import { ConfirmModal } from './ConfirmModal';
 
 const BOOK_COLORS = ['#0A5386', '#254454', '#133F47', '#8B1E1E', '#1B5E5A', '#2F333C'];
@@ -15,6 +30,10 @@ function getEntryBookName(entry: JournalEntry): string {
 function getEntryBookColor(entry: JournalEntry): string | null {
   const colorTag = entry.tags.find((t) => t.startsWith('color:'));
   return colorTag ? colorTag.slice(6) : null;
+}
+
+function getDisplayTags(tags: string[]): string[] {
+  return tags.filter((t) => !t.startsWith('book:') && !t.startsWith('color:'));
 }
 
 export const JournalView: React.FC = () => {
@@ -34,9 +53,11 @@ export const JournalView: React.FC = () => {
   const [showNewBookModal, setShowNewBookModal] = useState(false);
   const [newBookInput, setNewBookInput] = useState('');
   const [newBookColor, setNewBookColor] = useState(BOOK_COLORS[0]);
-  const [newBookKind, setNewBookKind] = useState<JournalKind>('Idea');
   const [newBookFirstPage, setNewBookFirstPage] = useState('');
   const [customBooks, setCustomBooks] = useState<{ name: string; color: string }[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [fontColor, setFontColor] = useState('#18181B');
+  const editorRef = useRef<HTMLDivElement | null>(null);
   const [deleteBookTarget, setDeleteBookTarget] = useState<{
     name: string;
     pageIds: string[];
@@ -95,10 +116,8 @@ export const JournalView: React.FC = () => {
     openTimersRef.current = [t1, t2, t3];
   };
 
-  const [kindFilter, setKindFilter] = useState<'All' | JournalKind>('All');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
-  const [draftContent, setDraftContent] = useState('');
   const saveTimerRef = useRef<number | null>(null);
   const titleSaveTimerRef = useRef<number | null>(null);
   const lastLocalEditRef = useRef<number>(0);
@@ -138,12 +157,8 @@ export const JournalView: React.FC = () => {
 
   const bookPages = useMemo(() => {
     if (!openBookName) return [];
-    return journalEntries.filter((e) => {
-      if (getEntryBookName(e) !== openBookName) return false;
-      if (kindFilter !== 'All' && e.kind !== kindFilter) return false;
-      return true;
-    });
-  }, [journalEntries, openBookName, kindFilter]);
+    return journalEntries.filter((e) => getEntryBookName(e) === openBookName);
+  }, [journalEntries, openBookName]);
 
   const activeEntry =
     bookPages.find((e) => e.id === selectedId) ?? bookPages[0] ?? null;
@@ -167,8 +182,10 @@ export const JournalView: React.FC = () => {
       (switchedEntry || !recentlyEditedContent) &&
       (!incomingTyping || incomingTyping.author === currentUser?.name)
     ) {
-      setDraftContent(activeEntry.content);
       latestDraftRef.current = activeEntry.content;
+      if (editorRef.current && (switchedEntry || document.activeElement !== editorRef.current)) {
+        editorRef.current.innerHTML = activeEntry.content;
+      }
     }
     const recentlyEditedTitle = now - lastTitleEditRef.current < 1800;
     if (
@@ -190,8 +207,10 @@ export const JournalView: React.FC = () => {
 
   useEffect(() => {
     if (incomingTyping && incomingTyping.author !== currentUser?.name) {
-      setDraftContent(incomingTyping.text);
       latestDraftRef.current = incomingTyping.text;
+      if (editorRef.current && document.activeElement !== editorRef.current) {
+        editorRef.current.innerHTML = incomingTyping.text;
+      }
     }
   }, [incomingTyping, currentUser?.name]);
 
@@ -213,7 +232,7 @@ export const JournalView: React.FC = () => {
     setNewBookInput('');
     setOpenBookName(clean);
     const created = await createJournalEntry({
-      kind: newBookKind,
+      kind: 'Idea',
       title: newBookFirstPage.trim() || 'Page 1',
       content: '',
       tags: [`book:${clean}`, `color:${newBookColor}`],
@@ -240,12 +259,12 @@ export const JournalView: React.FC = () => {
     }
   };
 
-  const handleCreatePage = async (kind: JournalKind) => {
+  const handleCreatePage = async () => {
     if (!openBookName) return;
     const pageNum = journalEntries.filter((e) => getEntryBookName(e) === openBookName).length + 1;
     const created = await createJournalEntry({
-      kind,
-      title: `Page ${pageNum}: ${kind === 'Idea' ? 'New Idea' : 'New Learning'}`,
+      kind: 'Idea',
+      title: `Page ${pageNum}`,
       content: '',
       tags: [`book:${openBookName}`],
     });
@@ -269,7 +288,6 @@ export const JournalView: React.FC = () => {
     if (!activeEntry) return;
     lastLocalEditRef.current = Date.now();
     latestDraftRef.current = val;
-    setDraftContent(val);
     broadcastTyping(`journal:${activeEntry.id}`, val);
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     const targetId = activeEntry.id;
@@ -278,13 +296,30 @@ export const JournalView: React.FC = () => {
     }, 350);
   };
 
-  const toggleTag = (tag: string) => {
+  const handleAddTag = (raw: string) => {
     if (!activeEntry) return;
-    const has = activeEntry.tags.includes(tag);
-    const next = has
-      ? activeEntry.tags.filter((t) => t !== tag)
-      : [...activeEntry.tags, tag];
-    updateJournalEntry(activeEntry.id, { tags: next });
+    const clean = raw.trim().replace(/^#+/, '');
+    if (!clean || activeEntry.tags.includes(clean)) {
+      setTagInput('');
+      return;
+    }
+    updateJournalEntry(activeEntry.id, { tags: [...activeEntry.tags, clean] });
+    setTagInput('');
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    if (!activeEntry) return;
+    updateJournalEntry(activeEntry.id, {
+      tags: activeEntry.tags.filter((t) => t !== tag),
+    });
+  };
+
+  const execFormat = (command: string, value?: string) => {
+    editorRef.current?.focus();
+    document.execCommand(command, false, value);
+    if (editorRef.current) {
+      handleContentChange(editorRef.current.innerHTML);
+    }
   };
 
   // BOOKSHELF VIEW (Apple Books 3D Shelf Ledges)
@@ -331,7 +366,6 @@ export const JournalView: React.FC = () => {
                 setNewBookInput('');
                 setNewBookFirstPage('');
                 setNewBookColor(BOOK_COLORS[books.length % BOOK_COLORS.length]);
-                setNewBookKind('Idea');
                 setShowNewBookModal(true);
               }}
               className="ios-press inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#0A5386] hover:bg-[#0C64A1] text-white rounded-lg shrink-0"
@@ -531,32 +565,17 @@ export const JournalView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#52525B] mb-1">
-                        First Page
-                      </label>
-                      <input
-                        type="text"
-                        value={newBookFirstPage}
-                        onChange={(e) => setNewBookFirstPage(e.target.value)}
-                        placeholder="Page 1"
-                        className="w-full px-2.5 py-1.5 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#52525B] mb-1">
-                        Type
-                      </label>
-                      <select
-                        value={newBookKind}
-                        onChange={(e) => setNewBookKind(e.target.value as JournalKind)}
-                        className="w-full px-2.5 py-1.5 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
-                      >
-                        <option value="Idea">Idea</option>
-                        <option value="Learning">Learning</option>
-                      </select>
-                    </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#52525B] mb-1">
+                      First Page Title
+                    </label>
+                    <input
+                      type="text"
+                      value={newBookFirstPage}
+                      onChange={(e) => setNewBookFirstPage(e.target.value)}
+                      placeholder="Page 1"
+                      className="w-full px-3 py-2 text-xs bg-[#FAF9F6] border border-[#E4E2DC] rounded-lg"
+                    />
                   </div>
                 </div>
               </div>
@@ -770,17 +789,10 @@ export const JournalView: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => handleCreatePage('Idea')}
-            className="ios-press inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0A5386] hover:bg-[#0C64A1] text-white rounded-lg"
+            onClick={handleCreatePage}
+            className="ios-press inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#0A5386] hover:bg-[#0C64A1] text-white rounded-lg"
           >
-            <Plus className="w-3.5 h-3.5" /> New Idea Page
-          </button>
-          <button
-            type="button"
-            onClick={() => handleCreatePage('Learning')}
-            className="ios-press inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#254454] hover:bg-[#2E5468] text-white rounded-lg"
-          >
-            <Plus className="w-3.5 h-3.5" /> New Learning Page
+            <Plus className="w-3.5 h-3.5" /> New Page
           </button>
         </div>
       </div>
@@ -803,33 +815,19 @@ export const JournalView: React.FC = () => {
           <div className="lg:col-span-4 bg-[#F7F4EC] border-b lg:border-b-0 lg:border-r border-[#D6D0C2] p-5 lg:pr-8 flex flex-col shadow-[inset_-16px_0_24px_-16px_rgba(0,0,0,0.18)]">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-[#52525B]">
-                Pages
+                Pages ({bookPages.length})
               </span>
-              <div className="flex gap-1">
-                {(['All', 'Idea', 'Learning'] as const).map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setKindFilter(k)}
-                    className={`px-2 py-1 text-[11px] font-medium rounded border ${kindFilter === k
-                      ? 'bg-[#0A5386] text-white border-[#0A5386]'
-                      : 'bg-white text-[#52525B] border-[#E4E2DC]'
-                      }`}
-                  >
-                    {k}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div className="space-y-2 overflow-y-auto flex-1 pr-1">
               {bookPages.length === 0 ? (
                 <div className="py-12 text-center text-xs text-[#71717A]">
-                  This book has no pages yet. Click &ldquo;New Idea Page&rdquo; or &ldquo;New Learning Page&rdquo; above.
+                  This book has no pages yet. Click &ldquo;New Page&rdquo; above.
                 </div>
               ) : (
                 bookPages.map((entry, idx) => {
                   const selected = activeEntry?.id === entry.id;
+                  const customTags = getDisplayTags(entry.tags);
                   return (
                     <button
                       key={entry.id}
@@ -841,18 +839,24 @@ export const JournalView: React.FC = () => {
                         }`}
                     >
                       <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider">
-                        <span
-                          className={
-                            entry.kind === 'Idea' ? 'text-[#5FA8E0]' : 'text-[#4D8B6F]'
-                          }
-                        >
-                          Page {idx + 1} · {entry.kind}
-                        </span>
+                        <span className="text-[#0A5386]">Page {idx + 1}</span>
                         <span className="text-[#71717A]">{entry.author}</span>
                       </div>
                       <div className="mt-1 text-xs font-semibold text-[#18181B] truncate">
                         {entry.title}
                       </div>
+                      {customTags.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {customTags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-1.5 py-0.5 text-[10px] font-medium bg-[#0A5386]/10 text-[#0A5386] rounded"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div className="mt-1 text-[11px] text-[#71717A] font-mono-num">
                         {formatDateShort(entry.updatedAt)}
                       </div>
@@ -863,18 +867,18 @@ export const JournalView: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Page: Ruled Paper Live Editor */}
+          {/* Right Page: Ruled Paper Rich-Text Live Editor */}
           <div className="lg:col-span-8 bg-[#FCFBF8] p-6 lg:pl-10 flex flex-col shadow-[inset_16px_0_24px_-16px_rgba(0,0,0,0.16)]">
             {!activeEntry ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center text-[#71717A]">
                 <BookOpen className="w-7 h-7 mb-2" />
                 <p className="text-sm font-medium text-[#18181B]">No page selected</p>
                 <p className="text-xs mt-1">
-                  Create a new page above to start writing notes in {openBookName}.
+                  Click &ldquo;New Page&rdquo; above to start writing in {openBookName}.
                 </p>
               </div>
             ) : (
-              <div className="flex-1 flex flex-col space-y-4">
+              <div className="flex-1 flex flex-col space-y-3">
                 <div className="flex items-start justify-between gap-3 pb-2.5 border-b border-[#E4E2DC]">
                   <input
                     type="text"
@@ -900,18 +904,40 @@ export const JournalView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Metadata & Tags */}
-                <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-[#E4E2DC]">
-                  <select
-                    value={activeEntry.kind}
-                    onChange={(e) =>
-                      updateJournalEntry(activeEntry.id, { kind: e.target.value as JournalKind })
-                    }
-                    className="px-2 py-1 text-[11px] font-medium bg-white border border-[#E4E2DC] rounded"
-                  >
-                    <option value="Idea">Idea</option>
-                    <option value="Learning">Learning</option>
-                  </select>
+                {/* Inline Tags Bar */}
+                <div className="flex flex-wrap items-center gap-1.5 pb-2.5 border-b border-[#E4E2DC]">
+                  <span className="text-xs font-semibold text-[#52525B]">Tags:</span>
+                  {getDisplayTags(activeEntry.tags).map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-[#0A5386]/10 text-[#0A5386] rounded-md"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="hover:text-[#DC2626]"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ',') {
+                        e.preventDefault();
+                        handleAddTag(tagInput);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (tagInput.trim()) handleAddTag(tagInput);
+                    }}
+                    placeholder="Type tag & press Enter..."
+                    className="flex-1 min-w-[140px] px-1.5 py-0.5 text-xs bg-transparent text-[#18181B] border-b border-dashed border-[#D6D0C2] focus:border-[#0A5386] focus:outline-none placeholder:text-[#A1A1AA]"
+                  />
 
                   <select
                     value={activeEntry.projectId ?? ''}
@@ -920,7 +946,7 @@ export const JournalView: React.FC = () => {
                         projectId: e.target.value || undefined,
                       })
                     }
-                    className="px-2 py-1 text-[11px] bg-white border border-[#E4E2DC] rounded"
+                    className="ml-auto px-2 py-1 text-[11px] bg-white border border-[#E4E2DC] rounded"
                   >
                     <option value="">General (No linked project)</option>
                     {projects.map((p) => (
@@ -929,33 +955,156 @@ export const JournalView: React.FC = () => {
                       </option>
                     ))}
                   </select>
-
-                  <div className="flex flex-wrap gap-1 ml-auto">
-                    {JOURNAL_TAGS.map((tag) => {
-                      const active = activeEntry.tags.includes(tag);
-                      return (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => toggleTag(tag)}
-                          className={`px-2 py-0.5 text-[10px] font-medium rounded border ${active
-                            ? 'bg-[#0A5386] text-white border-[#0A5386]'
-                            : 'bg-white text-[#52525B] border-[#E4E2DC]'
-                            }`}
-                        >
-                          {tag}
-                        </button>
-                      );
-                    })}
-                  </div>
                 </div>
 
-                {/* Ruled Writing Area */}
-                <textarea
-                  value={draftContent}
-                  onChange={(e) => handleContentChange(e.target.value)}
-                  placeholder="Write down your thoughts, technical findings, or business ideas..."
-                  className="w-full flex-1 min-h-[340px] p-3 text-sm text-[#18181B] ruled-paper border border-[#E4E2DC] rounded-lg focus:outline-none focus:border-[#0A5386] resize-none"
+                {/* Rich Text Formatting Toolbar */}
+                <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 rounded-lg bg-[#F4F1EA] border border-[#E4E2DC]">
+                  <select
+                    aria-label="Font Family"
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) execFormat('fontName', e.target.value);
+                      e.target.value = '';
+                    }}
+                    className="px-2 py-1 text-[11px] bg-white border border-[#E4E2DC] rounded text-[#18181B]"
+                  >
+                    <option value="">Font</option>
+                    <option value="Plus Jakarta Sans, sans-serif">Sans</option>
+                    <option value="Georgia, serif">Serif</option>
+                    <option value="JetBrains Mono, monospace">Mono</option>
+                    <option value="Times New Roman, serif">Classic</option>
+                  </select>
+
+                  <select
+                    aria-label="Font Size"
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) execFormat('fontSize', e.target.value);
+                      e.target.value = '';
+                    }}
+                    className="px-2 py-1 text-[11px] bg-white border border-[#E4E2DC] rounded text-[#18181B]"
+                  >
+                    <option value="">Size</option>
+                    <option value="2">Small</option>
+                    <option value="3">Normal</option>
+                    <option value="4">Large</option>
+                    <option value="5">Heading</option>
+                  </select>
+
+                  <div className="w-px h-4 bg-[#D6D0C2] mx-1" />
+
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      execFormat('bold');
+                    }}
+                    title="Bold"
+                    className="p-1.5 rounded hover:bg-white text-[#18181B]"
+                  >
+                    <Bold className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      execFormat('italic');
+                    }}
+                    title="Italic"
+                    className="p-1.5 rounded hover:bg-white text-[#18181B]"
+                  >
+                    <Italic className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      execFormat('underline');
+                    }}
+                    title="Underline"
+                    className="p-1.5 rounded hover:bg-white text-[#18181B]"
+                  >
+                    <Underline className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      execFormat('strikeThrough');
+                    }}
+                    title="Strikethrough"
+                    className="p-1.5 rounded hover:bg-white text-[#18181B]"
+                  >
+                    <Strikethrough className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div className="w-px h-4 bg-[#D6D0C2] mx-1" />
+
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      execFormat('insertUnorderedList');
+                    }}
+                    title="Bullet List"
+                    className="p-1.5 rounded hover:bg-white text-[#18181B]"
+                  >
+                    <List className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      execFormat('insertOrderedList');
+                    }}
+                    title="Numbered List"
+                    className="p-1.5 rounded hover:bg-white text-[#18181B]"
+                  >
+                    <ListOrdered className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div className="w-px h-4 bg-[#D6D0C2] mx-1" />
+
+                  <label
+                    title="Text Color"
+                    className="inline-flex items-center gap-1 px-1.5 py-1 rounded hover:bg-white cursor-pointer text-[11px] font-bold text-[#18181B]"
+                  >
+                    <span
+                      className="w-3.5 h-3.5 rounded-sm border border-black/15"
+                      style={{ backgroundColor: fontColor }}
+                    />
+                    <input
+                      type="color"
+                      value={fontColor}
+                      onChange={(e) => {
+                        setFontColor(e.target.value);
+                        execFormat('foreColor', e.target.value);
+                      }}
+                      className="sr-only"
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      execFormat('removeFormat');
+                    }}
+                    title="Clear Formatting"
+                    className="p-1.5 rounded hover:bg-white text-[#52525B]"
+                  >
+                    <RemoveFormatting className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Ruled Rich-Text Writing Area */}
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={(e) => handleContentChange(e.currentTarget.innerHTML)}
+                  data-placeholder="Write down your thoughts, technical findings, or notes..."
+                  className="w-full flex-1 min-h-[320px] p-3 text-sm text-[#18181B] ruled-paper border border-[#E4E2DC] rounded-lg focus:outline-none focus:border-[#0A5386] overflow-y-auto empty:before:content-[attr(data-placeholder)] empty:before:text-[#A1A1AA]"
                 />
               </div>
             )}
