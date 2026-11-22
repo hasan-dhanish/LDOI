@@ -207,11 +207,11 @@ const FloatingPagePin: React.FC<{
           setIsFocused(false);
         }
       }}
-      className={`group absolute w-[300px] rounded-xl p-4 select-none transition-shadow ${
+      className={`group absolute w-[300px] rounded-xl p-4 select-none transition-shadow hover:z-30 focus-within:z-30 ${
         hasCustomTint
           ? 'shadow-[0_14px_34px_rgba(24,24,27,0.14)] text-[#18181B]'
           : 'floating-sheet'
-      } ${activeAnchorSide ? 'ring-2 ring-[#0A5386]/70' : ''}`}
+      } ${activeAnchorSide ? 'ring-2 ring-[#0A5386]/70 z-30' : ''}`}
     >
       {/* 4 Edge Snap Dots */}
       <AnchorDots
@@ -224,7 +224,7 @@ const FloatingPagePin: React.FC<{
       {!connectActive && (
         <div
           onPointerDown={(e) => e.stopPropagation()}
-          className={`transition-opacity absolute -top-9 left-0 right-0 z-20 flex items-center justify-between gap-1 ${
+          className={`transition-opacity absolute -top-9 left-0 right-0 z-40 flex items-center justify-between gap-1 ${
             isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
           }`}
         >
@@ -886,30 +886,68 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     return undefined;
   };
 
+  const renderStyleIcon = (st: ConnectorStyle) => {
+    if (st === 'arrow') return <ArrowUpRight className="w-3.5 h-3.5" />;
+    if (st === 'line') {
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      );
+    }
+    if (st === 'dashed') {
+      return (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <line
+            x1="2"
+            y1="7"
+            x2="12"
+            y2="7"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeDasharray="3 2.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+    }
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <line
+          x1="2"
+          y1="7"
+          x2="12"
+          y2="7"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeDasharray="0.5 3.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  };
+
   return (
     <div className="flex-1 flex flex-col min-h-0 relative">
-      {/* Edit Existing Connector Pill OR New Connector Picker Pill */}
+      {/* Edit Existing Connector Pill */}
       {selectedConn && !connectMode && (
-        <div className="fixed bottom-18 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-3 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-2 backdrop-blur-md">
-          <span className="text-[11px] font-semibold text-[#52525B] whitespace-nowrap">
-            Edit Line
-          </span>
-          <div className="w-px h-4 bg-[#E4E2DC]" />
+        <div className="fixed bottom-18 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-2.5 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-1.5 backdrop-blur-md">
           {(['arrow', 'line', 'dashed', 'dotted'] as ConnectorStyle[]).map((st) => (
             <button
               key={st}
               type="button"
               onClick={() => updateConnector(selectedConn.id, { style: st })}
-              className={`px-2 py-0.5 text-[11px] font-medium rounded-full capitalize ${
+              title={st}
+              className={`p-1.5 rounded-full ${
                 selectedConn.style === st
                   ? 'bg-[#0A5386] text-white'
                   : 'text-[#52525B] hover:bg-black/5'
               }`}
             >
-              {st}
+              {renderStyleIcon(st)}
             </button>
           ))}
-          <div className="w-px h-4 bg-[#E4E2DC]" />
+          <div className="w-px h-4 bg-[#E4E2DC] mx-0.5" />
           {CONNECTOR_COLORS.map((c) => (
             <button
               key={c}
@@ -921,7 +959,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               }`}
             />
           ))}
-          <div className="w-px h-4 bg-[#E4E2DC]" />
+          <div className="w-px h-4 bg-[#E4E2DC] mx-0.5" />
           <button
             type="button"
             onClick={() =>
@@ -933,7 +971,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
               })
             }
             title="Reverse Arrow Direction"
-            className="p-1 rounded-full text-[#52525B] hover:text-[#18181B] hover:bg-black/5"
+            className="p-1.5 rounded-full text-[#52525B] hover:text-[#18181B] hover:bg-black/5"
           >
             <ArrowLeftRight className="w-3.5 h-3.5" />
           </button>
@@ -941,7 +979,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
             type="button"
             onClick={() => handleDeleteConnector(selectedConn.id)}
             title="Delete Line"
-            className="p-1 rounded-full text-[#DC2626] hover:bg-[#DC2626]/10"
+            className="p-1.5 rounded-full text-[#DC2626] hover:bg-[#DC2626]/10"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -949,26 +987,23 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
       )}
 
       {connectMode && (
-        <div className="fixed bottom-18 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-3 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-2 backdrop-blur-md">
-          <span className="text-[11px] font-semibold text-[#52525B] whitespace-nowrap">
-            {connectFrom ? 'Click target edge dot' : 'Click any edge dot'}
-          </span>
-          <div className="w-px h-4 bg-[#E4E2DC]" />
+        <div className="fixed bottom-18 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-2.5 py-1.5 shadow-xl border border-[#E4E2DC] flex items-center gap-1.5 backdrop-blur-md">
           {(['arrow', 'line', 'dashed', 'dotted'] as ConnectorStyle[]).map((st) => (
             <button
               key={st}
               type="button"
               onClick={() => setConnectStyle(st)}
-              className={`px-2 py-0.5 text-[11px] font-medium rounded-full capitalize ${
+              title={st}
+              className={`p-1.5 rounded-full ${
                 connectStyle === st
                   ? 'bg-[#0A5386] text-white'
                   : 'text-[#52525B] hover:bg-black/5'
               }`}
             >
-              {st}
+              {renderStyleIcon(st)}
             </button>
           ))}
-          <div className="w-px h-4 bg-[#E4E2DC]" />
+          <div className="w-px h-4 bg-[#E4E2DC] mx-0.5" />
           {CONNECTOR_COLORS.map((c) => (
             <button
               key={c}
@@ -1001,12 +1036,12 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
             setConnectFrom(null);
             setSelectedConnId(null);
           }}
-          className={`ios-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-full ${
+          title={connectMode ? 'Exit Connect Mode' : 'Connect Elements'}
+          className={`ios-press shrink-0 inline-flex items-center justify-center p-2 rounded-full ${
             connectMode ? 'bg-[#8B1E1E] text-white' : 'bg-[#133F47] text-white'
           }`}
         >
           <ArrowUpRight className="w-3.5 h-3.5" />
-          {connectMode ? 'Done Connecting' : 'Connect'}
         </button>
 
         <label className="ios-press shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#254454] text-white rounded-full cursor-pointer">
@@ -1281,8 +1316,8 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
             );
           })}
 
-          {/* Surface-Attached SVG Flow Arrows & Line Connectors (z-20 so arrowheads sit cleanly ON element edges!) */}
-          <svg className="pointer-events-none overflow-visible absolute top-0 left-0 w-px h-px z-20">
+          {/* Surface-Attached SVG Flow Arrows & Line Connectors (z-10: above card surfaces, below hover toolbars z-40) */}
+          <svg className="pointer-events-none overflow-visible absolute top-0 left-0 w-px h-px z-10">
             <defs>
               {CONNECTOR_COLORS.map((c) => {
                 const key = c.replace('#', '');
@@ -1290,14 +1325,15 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
                   <marker
                     key={key}
                     id={`arrow-${key}`}
-                    viewBox="0 0 10 10"
-                    refX="9"
-                    refY="5"
-                    markerWidth="6.5"
-                    markerHeight="6.5"
+                    viewBox="0 0 12 12"
+                    refX="10.5"
+                    refY="6"
+                    markerWidth="6"
+                    markerHeight="6"
+                    markerUnits="strokeWidth"
                     orient="auto-start-reverse"
                   >
-                    <path d="M 0 1.2 L 9 5 L 0 8.8 z" fill={c} />
+                    <path d="M 1 1.5 L 11.5 6 L 1 10.5 z" fill={c} />
                   </marker>
                 );
               })}
