@@ -31,14 +31,11 @@ export function serializeRequirementCheckpoints(items: RequirementCheckpoint[]):
   return `${CHECKPOINTS_PREFIX}${JSON.stringify(items)}`;
 }
 
-export type HardwareNodeType = 'page' | 'ic' | 'terminal' | 'sensor';
-
 export interface PinPageData {
   title: string;
   bodyHtml: string;
   checklist: RequirementCheckpoint[];
   bgColor?: string;
-  componentType?: HardwareNodeType;
 }
 
 const PIN_PAGE_JSON_PREFIX = '__JSON__:';
@@ -51,16 +48,11 @@ export function parsePinPageContent(rawNoteContent: string): PinPageData {
   if (afterTag.startsWith(PIN_PAGE_JSON_PREFIX)) {
     try {
       const parsed = JSON.parse(afterTag.slice(PIN_PAGE_JSON_PREFIX.length));
-      const cType = parsed.componentType;
       return {
         title: typeof parsed.title === 'string' ? parsed.title : '',
         bodyHtml: typeof parsed.bodyHtml === 'string' ? parsed.bodyHtml : '',
         checklist: Array.isArray(parsed.checklist) ? parsed.checklist : [],
         bgColor: typeof parsed.bgColor === 'string' ? parsed.bgColor : undefined,
-        componentType:
-          cType === 'ic' || cType === 'terminal' || cType === 'sensor' || cType === 'page'
-            ? cType
-            : undefined,
       };
     } catch {
       // fall through

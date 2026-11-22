@@ -1,12 +1,12 @@
 import React from 'react';
 import {
   BookOpen,
-  CircuitBoard,
-  Cpu,
+  CalendarClock,
+  FolderKanban,
+  LayoutDashboard,
   LogOut,
   Moon,
   Sun,
-  Timer,
 } from 'lucide-react';
 import { TEAM_MEMBERS, getMemberColor, getMemberInitials } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
@@ -26,10 +26,10 @@ const NAV_ITEMS: {
   color: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
-    { id: 'dashboard', label: 'My Dashboard', color: '#0A5386', icon: Cpu },
+    { id: 'dashboard', label: 'My Dashboard', color: '#0A5386', icon: LayoutDashboard },
     { id: 'journal', label: 'Live Notes & Ideas', color: '#1B5E5A', icon: BookOpen },
-    { id: 'projects', label: 'Projects', color: '#254454', icon: CircuitBoard },
-    { id: 'deadlines', label: 'Deadlines', color: '#8B1E1E', icon: Timer },
+    { id: 'projects', label: 'Projects', color: '#254454', icon: FolderKanban },
+    { id: 'deadlines', label: 'Deadlines', color: '#8B1E1E', icon: CalendarClock },
   ];
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -110,13 +110,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Live Team Presence Widget */}
         <div className="hidden md:block mx-3 mt-3 p-3.5 rounded-2xl bg-[#F7F6F2] border border-[#E2E0D8]">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="pcb-silkscreen text-[10px] font-bold text-[#8E8E93]">
-              BUS NODES · TEAM
-            </span>
-            <span className="pcb-silkscreen text-[9px] font-semibold text-[#10B981]">
-              {onlineMembers.length}/4 ON
-            </span>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] mb-2.5">
+            Team Online
           </div>
           <div className="space-y-2">
             {TEAM_MEMBERS.map((m) => {
@@ -136,7 +131,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </span>
                   </div>
                   <span
-                    className={`pcb-led ${isOnline ? 'pcb-led-green' : 'pcb-led-off'}`}
+                    className={`w-2.5 h-2.5 rounded-xs ${isOnline ? 'bg-[#34C759]' : 'bg-[#D1D1D6]'
+                      }`}
                     title={isOnline ? 'Online' : 'Offline'}
                   />
                 </div>

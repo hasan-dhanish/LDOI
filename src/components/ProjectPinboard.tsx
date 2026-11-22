@@ -3,9 +3,7 @@ import {
   ArrowLeftRight,
   ArrowUpRight,
   Bold,
-  Cable,
   CheckSquare,
-  Cpu,
   Download,
   Eraser,
   FileSpreadsheet,
@@ -21,7 +19,6 @@ import {
   Minus,
   Pen,
   Plus,
-  Radio,
   Redo2,
   RotateCcw,
   Square,
@@ -51,7 +48,6 @@ import {
   type BoardStroke,
   type BoardZone,
   type ConnectorStyle,
-  type HardwareNodeType,
   type PinPageData,
 } from '../lib/pinboard';
 import type { MemberName, Project, ProjectNote } from '../types';
@@ -276,13 +272,13 @@ const AnchorDots: React.FC<{
               e.stopPropagation();
               onSelectSide(side);
             }}
-            title={`Connect ${side} solder pad`}
-            className={`absolute z-30 w-4 h-4 rounded-full transition-transform cursor-crosshair ${
+            title={`Connect ${side} edge`}
+            className={`absolute z-30 w-4 h-4 rounded-full border-2 border-white shadow-md transition-transform cursor-crosshair ${
               posClasses[side]
             } ${
               isActive
-                ? 'bg-[#8B1E1E] border-2 border-white shadow-md scale-125 ring-2 ring-[#8B1E1E]/40'
-                : 'pcb-solder-pad hover:scale-125'
+                ? 'bg-[#8B1E1E] scale-125 ring-2 ring-[#8B1E1E]/40'
+                : 'bg-[#0A5386] hover:scale-125'
             }`}
           />
         );
@@ -324,7 +320,6 @@ const FloatingPagePin = React.forwardRef<
     ref
   ) => {
     const initialData = parsePinPageContent(note.content);
-    const componentType: HardwareNodeType = initialData.componentType ?? 'page';
     const [title, setTitle] = useState(initialData.title);
     const [checklist, setChecklist] = useState(initialData.checklist);
     const [bgColor, setBgColor] = useState(initialData.bgColor ?? '');
@@ -350,7 +345,6 @@ const FloatingPagePin = React.forwardRef<
         bodyHtml: nextPatch?.bodyHtml ?? editorRef.current?.innerHTML ?? initialData.bodyHtml,
         checklist: nextPatch?.checklist ?? checklist,
         bgColor: nextPatch?.bgColor !== undefined ? nextPatch.bgColor : bgColor || undefined,
-        componentType: componentType !== 'page' ? componentType : undefined,
       };
       onUpdate(serializePinPageContent(payload));
     };
@@ -400,29 +394,9 @@ const FloatingPagePin = React.forwardRef<
       getPaperColor: () => bgColor,
     }));
 
-    const isHardwareNode = componentType !== 'page';
     const hasCustomTint = Boolean(bgColor);
-    const useDarkInk = hasCustomTint ? isLightHex(bgColor) : !isHardwareNode;
-    const useLightInk = hasCustomTint ? !isLightHex(bgColor) : isHardwareNode;
-
-    const hardwareStyle: React.CSSProperties | undefined = hasCustomTint
-      ? { backgroundColor: bgColor }
-      : componentType === 'ic'
-      ? {
-          background: 'linear-gradient(155deg, #161b22 0%, #0d1117 100%)',
-          border: '1.5px solid rgba(212, 175, 55, 0.45)',
-        }
-      : componentType === 'terminal'
-      ? {
-          background: 'linear-gradient(155deg, #0b2b22 0%, #071d17 100%)',
-          border: '1.5px solid rgba(52, 211, 153, 0.38)',
-        }
-      : componentType === 'sensor'
-      ? {
-          background: 'linear-gradient(155deg, #0e2433 0%, #081722 100%)',
-          border: '1.5px solid rgba(56, 189, 248, 0.38)',
-        }
-      : undefined;
+    const useDarkInk = hasCustomTint && isLightHex(bgColor);
+    const useLightInk = hasCustomTint && !isLightHex(bgColor);
 
     return (
       <div
@@ -430,7 +404,7 @@ const FloatingPagePin = React.forwardRef<
         style={{
           left: pos.x,
           top: pos.y,
-          ...hardwareStyle,
+          backgroundColor: hasCustomTint ? bgColor : undefined,
         }}
         onPointerDown={(e) => {
           e.stopPropagation();
@@ -438,8 +412,8 @@ const FloatingPagePin = React.forwardRef<
         }}
         onFocus={onFocusCard}
         className={`group absolute w-[300px] rounded-xl p-4 select-none transition-shadow ${
-          hasCustomTint || isHardwareNode
-            ? `shadow-[0_14px_34px_rgba(24,24,27,0.28)] ${useLightInk ? 'text-[#F4F4F5]' : 'text-[#18181B]'}`
+          hasCustomTint
+            ? `shadow-[0_14px_34px_rgba(24,24,27,0.14)] ${useLightInk ? 'text-[#F4F4F5]' : 'text-[#18181B]'}`
             : 'floating-sheet'
         } ${
           activeAnchorSide || isFocusedCard
@@ -447,62 +421,6 @@ const FloatingPagePin = React.forwardRef<
             : 'hover:z-20'
         }`}
       >
-        {/* Hardware Node Physical Component Details */}
-        {componentType === 'ic' && (
-          <>
-            {/* DIP / QFP Gold Pins on Left & Right */}
-            <div className="pointer-events-none absolute -left-2 top-6 bottom-6 flex flex-col justify-between" aria-hidden="true">
-              {[0, 1, 2, 3, 4].map((pin) => (
-                <span key={pin} className="w-2 h-2 rounded-l-[2px] bg-gradient-to-r from-[#B88928] to-[#F5D061] shadow-xs" />
-              ))}
-            </div>
-            <div className="pointer-events-none absolute -right-2 top-6 bottom-6 flex flex-col justify-between" aria-hidden="true">
-              {[0, 1, 2, 3, 4].map((pin) => (
-                <span key={pin} className="w-2 h-2 rounded-r-[2px] bg-gradient-to-l from-[#B88928] to-[#F5D061] shadow-xs" />
-              ))}
-            </div>
-            <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-white/10">
-              <span className="inline-flex items-center gap-1.5 pcb-silkscreen text-[9px] font-bold text-amber-300/90">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-300" />
-                U1 · MCU / IC CHIP
-              </span>
-              <Cpu className="w-3 h-3 text-amber-300/80" />
-            </div>
-          </>
-        )}
-
-        {componentType === 'terminal' && (
-          <>
-            {/* Top Brass Screw Terminal Pads */}
-            <div className="pointer-events-none absolute -top-1.5 left-6 right-6 flex justify-around" aria-hidden="true">
-              {[0, 1, 2, 3].map((p) => (
-                <span key={p} className="w-3 h-2 rounded-t-xs bg-gradient-to-b from-[#F5D061] to-[#9C7718] border border-black/30" />
-              ))}
-            </div>
-            <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-white/10">
-              <span className="inline-flex items-center gap-1.5 pcb-silkscreen text-[9px] font-bold text-emerald-300/90">
-                <span className="pcb-led pcb-led-green" />
-                J1 · I/O TERMINAL
-              </span>
-              <Cable className="w-3 h-3 text-emerald-300/80" />
-            </div>
-          </>
-        )}
-
-        {componentType === 'sensor' && (
-          <>
-            <span className="pcb-mounting-hole absolute top-2 left-2" aria-hidden="true" />
-            <span className="pcb-mounting-hole absolute bottom-2 right-2" aria-hidden="true" />
-            <div className="flex items-center justify-between mb-1.5 pb-1 pl-3 border-b border-white/10">
-              <span className="inline-flex items-center gap-1.5 pcb-silkscreen text-[9px] font-bold text-sky-300/90">
-                <span className="pcb-led pcb-led-green" />
-                MOD · SENSOR
-              </span>
-              <Radio className="w-3 h-3 text-sky-300/80" />
-            </div>
-          </>
-        )}
-
         {/* 4 Edge Snap Dots */}
         <AnchorDots
           visible={connectActive}
@@ -541,7 +459,7 @@ const FloatingPagePin = React.forwardRef<
             setTitle(e.target.value);
             scheduleSave({ title: e.target.value });
           }}
-          placeholder={isHardwareNode ? 'Part / Signal name...' : 'Page title...'}
+          placeholder="Page title..."
           className={`w-full text-sm font-bold bg-transparent focus:outline-none placeholder:text-[#A1A1AA] ${
             useDarkInk
               ? 'pinboard-tinted-input !text-[#18181B]'
@@ -550,7 +468,7 @@ const FloatingPagePin = React.forwardRef<
               : 'text-[#18181B]'
           }`}
           style={
-            hasCustomTint || isHardwareNode
+            hasCustomTint
               ? { backgroundColor: 'transparent', color: useLightInk ? '#F4F4F5' : '#18181B' }
               : undefined
           }
@@ -1137,31 +1055,10 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     e.target.value = '';
   };
 
-  const [showPartMenu, setShowPartMenu] = useState(false);
-
   const handleInstantAddPage = async () => {
     await addProjectNote(
       project.id,
       serializePinPageContent({ title: '', bodyHtml: '', checklist: [] })
-    );
-  };
-
-  const handleInstantAddPart = async (componentType: HardwareNodeType) => {
-    setShowPartMenu(false);
-    const defaultTitle =
-      componentType === 'ic'
-        ? 'MCU / IC Chip'
-        : componentType === 'terminal'
-        ? 'I/O Terminal'
-        : 'Sensor Module';
-    await addProjectNote(
-      project.id,
-      serializePinPageContent({
-        title: defaultTitle,
-        bodyHtml: '',
-        checklist: [],
-        componentType,
-      })
     );
   };
 
@@ -2003,39 +1900,6 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         </div>
       )}
 
-      {/* Hardware Component Picker Popover (above bottom toolbar) */}
-      {showPartMenu && (
-        <div
-          onPointerDown={(e) => e.stopPropagation()}
-          className="fixed bottom-18 left-1/2 -translate-x-1/2 z-40 paper-card rounded-2xl p-1.5 shadow-2xl border border-[#E4E2DC] flex items-center gap-1 backdrop-blur-md"
-        >
-          <button
-            type="button"
-            onClick={() => handleInstantAddPart('ic')}
-            className="ios-press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#161B22] text-amber-300 border border-amber-400/30 hover:brightness-110"
-          >
-            <Cpu className="w-3.5 h-3.5" />
-            IC Chip
-          </button>
-          <button
-            type="button"
-            onClick={() => handleInstantAddPart('terminal')}
-            className="ios-press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#0B2B22] text-emerald-300 border border-emerald-400/30 hover:brightness-110"
-          >
-            <Cable className="w-3.5 h-3.5" />
-            Terminal
-          </button>
-          <button
-            type="button"
-            onClick={() => handleInstantAddPart('sensor')}
-            className="ios-press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#0E2433] text-sky-300 border border-sky-400/30 hover:brightness-110"
-          >
-            <Radio className="w-3.5 h-3.5" />
-            Sensor
-          </button>
-        </div>
-      )}
-
       {/* Fixed Floating Pill Bar (Bottom-Center) */}
       <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 paper-card rounded-full px-2 py-1.5 shadow-2xl border border-[#E4E2DC] flex items-center gap-1.5 max-w-[95vw] overflow-x-auto backdrop-blur-md transition-all duration-300 ease-out">
         <button
@@ -2045,19 +1909,6 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         >
           <StickyNote className="w-3.5 h-3.5" />
           Add Page
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setShowPartMenu((v) => !v)}
-          className={`ios-press shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full ${
-            showPartMenu
-              ? 'bg-[#0F766E] text-white'
-              : 'bg-[#161B22] text-amber-300 border border-amber-400/35'
-          }`}
-        >
-          <Cpu className="w-3.5 h-3.5" />
-          Add Part
         </button>
 
         <button
@@ -2265,10 +2116,10 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
         style={{
           overscrollBehavior: 'none',
           touchAction: 'none',
-          backgroundImage: `radial-gradient(rgba(190, 150, 65, ${Math.min(
-            0.38,
-            Math.max(0.14, 0.3 * zoom)
-          )}) ${Math.max(0.8, 1.25 * Math.min(1, zoom))}px, transparent 1px)`,
+          backgroundImage: `radial-gradient(rgba(140, 128, 110, ${Math.min(
+            0.35,
+            Math.max(0.12, 0.28 * zoom)
+          )}) ${Math.max(0.75, 1.2 * Math.min(1, zoom))}px, transparent 1px)`,
           backgroundSize: `${Math.max(6, 22 * zoom)}px ${Math.max(6, 22 * zoom)}px`,
           backgroundPosition: `${pan.x}px ${pan.y}px`,
         }}
