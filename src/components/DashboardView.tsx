@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { formatDateShort, formatInr, getDeadlineUrgency } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
+import { getJournalPlainText } from '../lib/pinboard';
 import type { ActiveTab } from '../types';
 import { FolderCard } from './FolderCard';
 import { SevenSegmentClock } from './SevenSegmentClock';
@@ -416,7 +417,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {entry.title}
                 </div>
                 <div className="mt-1 text-[11px] text-[#636366] line-clamp-2">
-                  {entry.content || 'Empty note'}
+                  {getJournalPlainText(entry.content) || 'Empty note'}
                 </div>
               </button>
             ))}

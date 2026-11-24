@@ -191,13 +191,17 @@ export function getJournalBookColor(entry: JournalEntry): string | null {
   return colorTag ? colorTag.slice(6) : null;
 }
 
-export function getJournalPageSnippet(html: string): string {
-  const plain = html
+export function getJournalPlainText(html: string): string {
+  return html
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ')
     .replace(/\u200B/g, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+export function getJournalPageSnippet(html: string): string {
+  const plain = getJournalPlainText(html);
   if (!plain) return '';
   const words = plain.split(' ');
   return words.length > 7 ? `${words.slice(0, 7).join(' ')}...` : `${plain}...`;
