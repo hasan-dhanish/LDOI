@@ -7,6 +7,7 @@ import {
   Bold,
   BookOpen,
   Check,
+  CheckSquare,
   Highlighter,
   Italic,
   List,
@@ -21,34 +22,17 @@ import {
 } from 'lucide-react';
 import { formatDateShort } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
-import type { JournalEntry } from '../types';
+import {
+  getJournalBookColor as getEntryBookColor,
+  getJournalBookName as getEntryBookName,
+  getJournalPageSnippet as getPageSnippet,
+} from '../lib/pinboard';
 import { ConfirmModal } from './ConfirmModal';
 
 const BOOK_COLORS = ['#0A5386', '#254454', '#133F47', '#8B1E1E', '#1B5E5A', '#2F333C'];
 
-function getEntryBookName(entry: JournalEntry): string {
-  const bookTag = entry.tags.find((t) => t.startsWith('book:'));
-  return bookTag ? bookTag.slice(5) : 'Notes';
-}
-
-function getEntryBookColor(entry: JournalEntry): string | null {
-  const colorTag = entry.tags.find((t) => t.startsWith('color:'));
-  return colorTag ? colorTag.slice(6) : null;
-}
-
 function getDisplayTags(tags: string[]): string[] {
   return tags.filter((t) => !t.startsWith('book:') && !t.startsWith('color:'));
-}
-
-function getPageSnippet(html: string): string {
-  const plain = html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (!plain) return '';
-  const words = plain.split(' ');
-  return words.length > 7 ? `${words.slice(0, 7).join(' ')}...` : `${plain}...`;
 }
 
 export const JournalView: React.FC = () => {
@@ -379,6 +363,125 @@ export const JournalView: React.FC = () => {
     saveSelection();
     if (editorRef.current) {
       handleContentChange(editorRef.current.innerHTML);
+    }
+  };
+
+  const createCheckRowElement = (initialText = ''): HTMLDivElement => {
+    const row = document.createElement('div');
+    row.className = 'ldoi-check-row';
+    row.setAttribute('data-checked', 'false');
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'ldoi-check-input';
+    cb.setAttribute('contenteditable', 'false');
+
+    const span = document.createElement('span');
+    span.className = 'ldoi-check-text';
+    span.textContent = initialText || '\u200B';
+
+    row.appendChild(cb);
+    row.appendChild(span);
+    return row;
+  };
+
+  const placeCaretInCheckText = (span: HTMLElement) => {
+    const sel = window.getSelection();
+    if (!sel) return;
+    const range = document.createRange();
+    range.selectNodeContents(span);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    savedRangeRef.current = range.cloneRange();
+  };
+
+  const insertCheckbox = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    const sel = window.getSelection();
+    if (savedRangeRef.current && sel && editor.contains(savedRangeRef.current.startContainer)) {
+      sel.removeAllRanges();
+      sel.addRange(savedRangeRef.current);
+    }
+
+    const activeRange = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+    const selectedText = activeRange ? activeRange.toString().trim() : '';
+    const row = createCheckRowElement(selectedText);
+
+    if (activeRange && editor.contains(activeRange.commonAncestorContainer)) {
+      activeRange.deleteContents();
+      const existingRow = (
+        activeRange.startContainer.nodeType === Node.TEXT_NODE
+          ? activeRange.startContainer.parentElement
+          : (activeRange.startContainer as HTMLElement)
+      )?.closest('.ldoi-check-row');
+      if (existingRow && existingRow.parentNode) {
+        existingRow.parentNode.insertBefore(row, existingRow.nextSibling);
+      } else {
+        activeRange.insertNode(row);
+      }
+    } else {
+      editor.appendChild(row);
+    }
+
+    const span = row.querySelector('.ldoi-check-text') as HTMLElement | null;
+    if (span) placeCaretInCheckText(span);
+    handleContentChange(editor.innerHTML);
+  };
+
+  const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const anchorEl =
+      sel.anchorNode?.nodeType === Node.TEXT_NODE
+        ? sel.anchorNode.parentElement
+        : (sel.anchorNode as HTMLElement | null);
+    const checkRow = anchorEl?.closest('.ldoi-check-row') as HTMLElement | null;
+    if (!checkRow || !editorRef.current?.contains(checkRow)) return;
+
+    e.preventDefault();
+    const textEl = checkRow.querySelector('.ldoi-check-text') as HTMLElement | null;
+    const rawText = (textEl?.textContent ?? '').replace(/\u200B/g, '').trim();
+
+    if (!rawText) {
+      // Empty checklist item: exit checklist mode on Enter
+      const emptyLine = document.createElement('div');
+      emptyLine.innerHTML = '<br>';
+      checkRow.replaceWith(emptyLine);
+      const range = document.createRange();
+      range.setStart(emptyLine, 0);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      savedRangeRef.current = range.cloneRange();
+    } else {
+      const nextRow = createCheckRowElement('');
+      checkRow.parentNode?.insertBefore(nextRow, checkRow.nextSibling);
+      const nextSpan = nextRow.querySelector('.ldoi-check-text') as HTMLElement | null;
+      if (nextSpan) placeCaretInCheckText(nextSpan);
+    }
+    handleContentChange(editorRef.current.innerHTML);
+  };
+
+  const handleEditorClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox') {
+      const cb = target as HTMLInputElement;
+      if (cb.checked) {
+        cb.setAttribute('checked', 'checked');
+      } else {
+        cb.removeAttribute('checked');
+      }
+      const row = cb.closest('.ldoi-check-row');
+      if (row) {
+        row.setAttribute('data-checked', cb.checked ? 'true' : 'false');
+      }
+      if (editorRef.current) {
+        handleContentChange(editorRef.current.innerHTML);
+      }
     }
   };
 
@@ -1128,6 +1231,17 @@ export const JournalView: React.FC = () => {
                   >
                     <ListOrdered className="w-3.5 h-3.5" />
                   </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      insertCheckbox();
+                    }}
+                    title="Insert Checkbox"
+                    className="notebook-tool-btn p-1.5 rounded-full"
+                  >
+                    <CheckSquare className="w-3.5 h-3.5" />
+                  </button>
 
                   <div className="w-px h-4 bg-current opacity-15 mx-1" />
 
@@ -1215,6 +1329,8 @@ export const JournalView: React.FC = () => {
                   suppressContentEditableWarning
                   onMouseUp={saveSelection}
                   onKeyUp={saveSelection}
+                  onKeyDown={handleEditorKeyDown}
+                  onClick={handleEditorClick}
                   onInput={(e) => {
                     saveSelection();
                     handleContentChange(e.currentTarget.innerHTML);

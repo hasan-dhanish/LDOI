@@ -3,6 +3,8 @@ import {
   ArrowLeftRight,
   ArrowUpRight,
   Bold,
+  BookOpen,
+  Check,
   CheckSquare,
   Download,
   Eraser,
@@ -21,6 +23,7 @@ import {
   Plus,
   Redo2,
   RotateCcw,
+  Search,
   Square,
   StickyNote,
   Trash2,
@@ -32,6 +35,9 @@ import {
 import { getMemberColor } from '../constants';
 import { useLdoi } from '../context/LdoiContext';
 import {
+  convertJournalHtmlToPinPage,
+  getJournalBookName,
+  getJournalPageSnippet,
   loadBoardConnectors,
   loadBoardPositions,
   loadBoardStrokes,
@@ -586,6 +592,7 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
     broadcastCursor,
     projectNotes,
     documents,
+    journalEntries,
     addProjectNote,
     updateProjectNote,
     deleteProjectNote,
@@ -1060,6 +1067,64 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
       project.id,
       serializePinPageContent({ title: '', bodyHtml: '', checklist: [] })
     );
+  };
+
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importBookFilter, setImportBookFilter] = useState<string>('__all__');
+  const [importSearch, setImportSearch] = useState('');
+  const [selectedImportIds, setSelectedImportIds] = useState<Set<string>>(() => new Set());
+  const [isImporting, setIsImporting] = useState(false);
+
+  const notebookGroups = React.useMemo(() => {
+    const map = new Map<string, typeof journalEntries>();
+    for (const entry of journalEntries) {
+      const bName = getJournalBookName(entry);
+      const list = map.get(bName) ?? [];
+      list.push(entry);
+      map.set(bName, list);
+    }
+    return Array.from(map.entries()).map(([name, entries]) => ({ name, entries }));
+  }, [journalEntries]);
+
+  const filteredImportEntries = React.useMemo(() => {
+    const q = importSearch.trim().toLowerCase();
+    return journalEntries.filter((entry) => {
+      if (importBookFilter !== '__all__' && getJournalBookName(entry) !== importBookFilter) {
+        return false;
+      }
+      if (!q) return true;
+      return (
+        entry.title.toLowerCase().includes(q) ||
+        getJournalPageSnippet(entry.content).toLowerCase().includes(q) ||
+        getJournalBookName(entry).toLowerCase().includes(q)
+      );
+    });
+  }, [journalEntries, importBookFilter, importSearch]);
+
+  const toggleImportId = (id: string) => {
+    setSelectedImportIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleImportSelectedPages = async () => {
+    if (selectedImportIds.size === 0 || isImporting) return;
+    setIsImporting(true);
+    try {
+      const toImport = journalEntries.filter((e) => selectedImportIds.has(e.id));
+      for (const entry of toImport) {
+        const pinData = convertJournalHtmlToPinPage(entry.title, entry.content);
+        await addProjectNote(project.id, serializePinPageContent(pinData));
+      }
+      setShowImportModal(false);
+      setSelectedImportIds(new Set());
+      setImportSearch('');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleFitAll = () => {
@@ -1913,6 +1978,16 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
 
         <button
           type="button"
+          onClick={() => setShowImportModal(true)}
+          title="Import pages from Notebooks"
+          className="ios-press shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#1B5E5A] text-white rounded-full"
+        >
+          <BookOpen className="w-3.5 h-3.5" />
+          Import
+        </button>
+
+        <button
+          type="button"
           onClick={handleAddZone}
           className="ios-press shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#254454] text-white rounded-full"
         >
@@ -2524,6 +2599,197 @@ export const ProjectPinboard: React.FC<ProjectPinboardProps> = ({ project }) => 
           })}
         </div>
       </div>
+
+      {/* Import Pages from Notebooks Modal */}
+      {showImportModal && (
+        <div
+          onClick={() => setShowImportModal(false)}
+          className="fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="paper-card w-full max-w-2xl rounded-2xl border border-[#E4E2DC] shadow-2xl overflow-hidden flex flex-col max-h-[82vh]"
+          >
+            <div className="px-5 py-4 border-b border-[#E4E2DC] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-[#1B5E5A] text-white flex items-center justify-center shrink-0">
+                  <BookOpen className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-[#18181B]">Import from Notebooks</h3>
+                  <p className="text-[11px] text-[#71717A]">
+                    Select specific pages or whole notebooks to add to this workspace
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowImportModal(false)}
+                className="p-1.5 rounded-full text-[#71717A] hover:text-[#18181B]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-12 flex-1 min-h-0 overflow-hidden">
+              {/* Notebooks List */}
+              <div className="sm:col-span-4 border-b sm:border-b-0 sm:border-r border-[#E4E2DC] p-3 space-y-1 overflow-y-auto max-h-44 sm:max-h-none">
+                <button
+                  type="button"
+                  onClick={() => setImportBookFilter('__all__')}
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                    importBookFilter === '__all__'
+                      ? 'bg-[#0A5386] text-white'
+                      : 'text-[#3F3F46] hover:bg-black/5'
+                  }`}
+                >
+                  <span className="truncate">All Notebooks</span>
+                  <span className="text-[10px] opacity-80">{journalEntries.length}</span>
+                </button>
+                {notebookGroups.map((book) => (
+                  <button
+                    key={book.name}
+                    type="button"
+                    onClick={() => setImportBookFilter(book.name)}
+                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                      importBookFilter === book.name
+                        ? 'bg-[#0A5386] text-white'
+                        : 'text-[#3F3F46] hover:bg-black/5'
+                    }`}
+                  >
+                    <span className="truncate">{book.name}</span>
+                    <span className="text-[10px] opacity-80">{book.entries.length}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Pages Selection List */}
+              <div className="sm:col-span-8 flex flex-col min-h-0 overflow-hidden">
+                <div className="p-3 border-b border-[#E4E2DC] flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 text-[#8E8E93] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={importSearch}
+                      onChange={(e) => setImportSearch(e.target.value)}
+                      placeholder="Search pages..."
+                      className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded-lg border border-[#E4E2DC] bg-white/80 focus:outline-none focus:border-[#0A5386]"
+                    />
+                  </div>
+                  {filteredImportEntries.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allVisibleSelected = filteredImportEntries.every((e) =>
+                          selectedImportIds.has(e.id)
+                        );
+                        setSelectedImportIds((prev) => {
+                          const next = new Set(prev);
+                          filteredImportEntries.forEach((e) => {
+                            if (allVisibleSelected) next.delete(e.id);
+                            else next.add(e.id);
+                          });
+                          return next;
+                        });
+                      }}
+                      className="px-2.5 py-1.5 text-[11px] font-semibold rounded-lg border border-[#E4E2DC] text-[#0A5386] hover:bg-[#0A5386]/10 shrink-0"
+                    >
+                      {filteredImportEntries.every((e) => selectedImportIds.has(e.id))
+                        ? 'Deselect All'
+                        : 'Select All'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                  {filteredImportEntries.length === 0 ? (
+                    <div className="py-10 text-center text-xs text-[#8E8E93]">
+                      No notebook pages match your filter.
+                    </div>
+                  ) : (
+                    filteredImportEntries.map((entry) => {
+                      const selected = selectedImportIds.has(entry.id);
+                      const snippet = getJournalPageSnippet(entry.content);
+                      const bookName = getJournalBookName(entry);
+                      const checkCount = (entry.content.match(/ldoi-check-row/g) ?? []).length;
+
+                      return (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          onClick={() => toggleImportId(entry.id)}
+                          className={`w-full text-left p-3 rounded-xl border transition-all flex items-start gap-3 ${
+                            selected
+                              ? 'border-[#0A5386] bg-[#0A5386]/8'
+                              : 'border-[#E4E2DC] hover:border-[#0A5386]/40'
+                          }`}
+                        >
+                          <span
+                            className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center shrink-0 border ${
+                              selected
+                                ? 'bg-[#0A5386] border-[#0A5386] text-white'
+                                : 'border-[#A1A1AA] bg-transparent'
+                            }`}
+                          >
+                            {selected && <Check className="w-3 h-3" />}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-semibold text-[#18181B] truncate">
+                                {entry.title || 'Untitled Page'}
+                              </span>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {checkCount > 0 && (
+                                  <span className="px-1.5 py-0.5 rounded bg-[#1B5E5A]/15 text-[#1B5E5A] text-[10px] font-semibold">
+                                    {checkCount} check{checkCount === 1 ? '' : 's'}
+                                  </span>
+                                )}
+                                <span className="px-1.5 py-0.5 rounded bg-black/5 text-[10px] font-medium text-[#71717A]">
+                                  {bookName}
+                                </span>
+                              </div>
+                            </div>
+                            {snippet && (
+                              <p className="mt-1 text-[11px] text-[#71717A] truncate">{snippet}</p>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="px-5 py-3.5 border-t border-[#E4E2DC] flex items-center justify-between gap-3">
+              <span className="text-xs text-[#71717A]">
+                {selectedImportIds.size === 0
+                  ? 'Select pages to import'
+                  : `${selectedImportIds.size} page${selectedImportIds.size === 1 ? '' : 's'} selected`}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowImportModal(false)}
+                  className="px-3.5 py-1.5 text-xs font-semibold rounded-xl border border-[#E4E2DC] text-[#52525B]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={selectedImportIds.size === 0 || isImporting}
+                  onClick={handleImportSelectedPages}
+                  className="ios-press px-4 py-1.5 text-xs font-semibold rounded-xl bg-[#0A5386] text-white disabled:opacity-45"
+                >
+                  {isImporting
+                    ? 'Importing...'
+                    : `Import${selectedImportIds.size > 0 ? ` (${selectedImportIds.size})` : ''}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

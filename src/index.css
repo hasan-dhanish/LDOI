@@ -394,6 +394,37 @@
   margin: 14px 0;
 }
 
+.ldoi-check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.25rem 0;
+}
+
+.ldoi-check-input {
+  margin-top: 0.28rem;
+  width: 15px;
+  height: 15px;
+  accent-color: #0A5386;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.dark-theme input.ldoi-check-input {
+  background-color: transparent !important;
+  border-color: rgba(24, 24, 27, 0.35) !important;
+}
+
+.ldoi-check-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ldoi-check-row[data-checked="true"] .ldoi-check-text {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
 /* Open Notebook Light & Dark Theme Panes & Toolbar */
 .notebook-pages-pane {
   background-color: #f7f4ec;

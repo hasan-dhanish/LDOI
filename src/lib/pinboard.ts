@@ -1,3 +1,5 @@
+import type { JournalEntry } from '../types';
+
 export interface RequirementCheckpoint {
   id: string;
   text: string;
@@ -176,5 +178,72 @@ export function saveBoardStrokes(projectId: string, strokes: BoardStroke[]): voi
     localStorage.setItem(`ldoi_board_strokes_${projectId}`, JSON.stringify(strokes));
   } catch {
     // ignore
+  }
+}
+
+export function getJournalBookName(entry: JournalEntry): string {
+  const bookTag = entry.tags.find((t) => t.startsWith('book:'));
+  return bookTag ? bookTag.slice(5) : 'Notes';
+}
+
+export function getJournalBookColor(entry: JournalEntry): string | null {
+  const colorTag = entry.tags.find((t) => t.startsWith('color:'));
+  return colorTag ? colorTag.slice(6) : null;
+}
+
+export function getJournalPageSnippet(html: string): string {
+  const plain = html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\u200B/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!plain) return '';
+  const words = plain.split(' ');
+  return words.length > 7 ? `${words.slice(0, 7).join(' ')}...` : `${plain}...`;
+}
+
+export function convertJournalHtmlToPinPage(title: string, html: string): PinPageData {
+  if (!html) {
+    return { title, bodyHtml: '', checklist: [] };
+  }
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const checklist: RequirementCheckpoint[] = [];
+    const rows = Array.from(doc.body.querySelectorAll('.ldoi-check-row'));
+    rows.forEach((row, idx) => {
+      const textEl = row.querySelector('.ldoi-check-text') ?? row;
+      const text = (textEl.textContent ?? '').replace(/\u200B/g, '').trim();
+      const input = row.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+      const done =
+        row.getAttribute('data-checked') === 'true' ||
+        Boolean(input?.hasAttribute('checked')) ||
+        Boolean(input?.checked);
+      if (text) {
+        checklist.push({
+          id: `cp_imp_${Date.now()}_${idx}`,
+          text,
+          done,
+        });
+      }
+      row.remove();
+    });
+
+    const bodyHtml = doc.body.innerHTML
+      .replace(/\u200B/g, '')
+      .replace(/^(<br\s*\/?>|\s)+|(<br\s*\/?>|\s)+$/gi, '')
+      .trim();
+
+    return {
+      title,
+      bodyHtml,
+      checklist,
+    };
+  } catch {
+    return {
+      title,
+      bodyHtml: html,
+      checklist: [],
+    };
   }
 }
